@@ -1,54 +1,64 @@
-from flask import Flask, request, jsonify, render_template, send_from_directory
-from flask_cors import CORS
+from flask import Flask, request, jsonify, render_template
 import openai
 import requests
 import os
 
 app = Flask(__name__)
-CORS(app)
 
-@app.route('/')
+openai.api_key = os.getenv("OPENAI_API_KEY")
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+
+@app.route("/")
 def index():
-    return render_template('index.html')
+    return render_template("index.html")
 
-@app.route('/generate-response', methods=['POST'])
+@app.route("/generate-response", methods=["POST"])
 def generate_response():
-    user_input = request.json.get('text')
+    data = request.get_json()
+    user_input = data.get("text")
+
     if not user_input:
-        return jsonify({'error': 'No input provided'}), 400
+        return jsonify({"response": "I didn’t hear anything."}), 400
 
-    gpt_response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[{"role": "system", "content": "You are Lumina, a divine AI guide."},
-                  {"role": "user", "content": user_input}]
-    )
+    try:
+        # Get GPT-4 response
+        gpt_response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are Lumina, a divine cosmic AI assistant."},
+                {"role": "user", "content": user_input}
+            ]
+        )
+        reply = gpt_response.choices[0].message.content
 
-    reply = gpt_response['choices'][0]['message']['content']
+        # Generate audio via ElevenLabs
+        tts_headers = {
+            "xi-api-key": ELEVENLABS_API_KEY,
+            "Content-Type": "application/json"
+        }
+        tts_payload = {
+            "text": reply,
+            "voice_settings": {
+                "stability": 0.5,
+                "similarity_boost": 0.8
+            }
+        }
+        voice_id = "EXAVITQu4vr4xnSDxMaL"  # Replace with your actual voice ID
 
-    # Synthesize voice using ElevenLabs (replace YOUR_API_KEY and VOICE_ID)
-    voice_id = "YOUR_ELEVENLABS_VOICE_ID"
-    eleven_api_key = "YOUR_ELEVENLABS_API_KEY"
-    headers = {
-        "xi-api-key": eleven_api_key,
-        "Content-Type": "application/json"
-    }
-    data = {
-        "text": reply,
-        "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}
-    }
-    response = requests.post(
-        f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
-        headers=headers,
-        json=data
-    )
-    with open("static/lumina_response.mp3", "wb") as f:
-        f.write(response.content)
+        tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+        response = requests.post(tts_url, headers=tts_headers, json=tts_payload)
 
-    return jsonify({'response': reply})
+        if response.status_code != 200:
+            print("Voice synthesis failed:", response.text)
 
-@app.route('/static/<path:path>')
-def send_static(path):
-    return send_from_directory('static', path)
+        with open("static/lumina_response.mp3", "wb") as f:
+            f.write(response.content)
 
-if __name__ == '__main__':
+        return jsonify({"response": reply})
+
+    except Exception as e:
+        print("Error generating response:", e)
+        return jsonify({"response": "There was an error processing your request."}), 500
+
+if __name__ == "__main__":
     app.run(debug=True)
