@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lumina Legacy</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Lumina Legacy LLC</h1>
+    <p>Your Divine Digital AI Assistant</p>
+  </header>
+
+  <main>
+    <div id="orb" class="glow"></div>
+    <p id="userText">You said: <span id="spoken-text"></span></p>
+    <button id="mic-button">🎤 Activate Mic</button>
+    <button id="stop-button" style="display:none">🛑 Stop</button>
+    <p id="response-text" class="subtitle"></p>
+  </main>
+
+  <audio id="lumina-voice"></audio>
+  <script src="/static/script.js"></script>
+</body>
+</html>
