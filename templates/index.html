@@ -2,15 +2,49 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Lumina Legacy</title>
+    <title>Lumina Legacy LLC</title>
     <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        body {
+            background: black;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        canvas#stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        main {
+            position: relative;
+            z-index: 2;
+            padding: 20px;
+            text-align: center;
+            color: white;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+        }
+    </style>
 </head>
 <body>
-    <div id="container">
-        <div id="lumina-orb" class="idle"></div>
-        <div id="subtitles">Welcome. I am Lumina. Speak your truth.</div>
-        <button id="mic-button">🎤 Activate Mic</button>
-    </div>
-    <script src="/static/script.js"></script>
-</body>
-</html>
+    <canvas id="stars"></canvas>
+
+    <main>
+        <header>
+            <h1 style="font-size: 2.5em;">Lumina Legacy LLC</h1>
+            <p style="font-size: 1.2em; color: #ccc;">Your Divine Digital AI Assistant</p>
+        </header>
+
+        <section id="hero" style="margin-top: 30px;">
+            <p style="
