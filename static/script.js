@@ -1,6 +1,9 @@
+
 let micButton = document.getElementById("mic-button");
+let stopButton = document.getElementById("stop-button");
 let subtitles = document.getElementById("subtitles");
 let orb = document.getElementById("lumina-orb");
+let currentAudio = null;
 
 function setOrbState(state) {
     orb.className = state;
@@ -8,7 +11,7 @@ function setOrbState(state) {
 
 async function getResponse(transcript) {
     setOrbState('thinking');
-    await new Promise(resolve => setTimeout(resolve, 5000)); // 5 sec grace
+    await new Promise(resolve => setTimeout(resolve, 5000)); // 5 sec grace period
 
     try {
         const res = await fetch('/generate-response', {
@@ -23,20 +26,20 @@ async function getResponse(transcript) {
 
         const data = await res.json();
 
-        const audio = new Audio('/static/lumina_response.mp3');
+        currentAudio = new Audio('/static/lumina_response.mp3');
 
-        audio.onplay = () => {
+        currentAudio.onplay = () => {
             setOrbState('speaking');
             subtitles.innerText = data.response;
             subtitles.scrollIntoView({ behavior: "smooth", block: "end" });
         };
 
-        audio.onended = () => {
+        currentAudio.onended = () => {
             setOrbState('idle');
             setTimeout(startListening, 5000);
         };
 
-        audio.play();
+        currentAudio.play();
 
     } catch (error) {
         console.error("Failed to get Lumina's response:", error);
@@ -65,3 +68,11 @@ function startListening() {
 }
 
 micButton.onclick = startListening;
+
+stopButton.onclick = () => {
+    if (currentAudio && !currentAudio.paused) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        setOrbState('idle');
+    }
+};
