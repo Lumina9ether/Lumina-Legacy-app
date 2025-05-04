@@ -2,25 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Lumina Legacy</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
-  <header>
-    <h1>Lumina Legacy LLC</h1>
-    <p>Your Divine Digital AI Assistant</p>
-  </header>
+  <div class="hero">
+    <h1 class="brand-title">Lumina Legacy LLC</h1>
+    <p class="tagline">Your Divine Digital AI Assistant</p>
+  </div>
 
-  <main>
-    <div id="orb" class="glow"></div>
-    <p id="userText">You said: <span id="spoken-text"></span></p>
-    <button id="mic-button">🎤 Activate Mic</button>
-    <button id="stop-button" style="display:none">🛑 Stop</button>
-    <p id="response-text" class="subtitle"></p>
-  </main>
+  <div class="orb" id="orb"></div>
 
-  <audio id="lumina-voice"></audio>
+  <p id="transcript" class="subtitle">You said: <span id="user-text">...</span></p>
+  <p id="response" class="subtitle"></p>
+
+  <button id="start-button" class="mic-button">🎤 Activate Mic</button>
+  <button id="stop-button" class="stop-button">⏹ Stop Lumina</button>
+
+  <audio id="lumina-voice" preload="auto"></audio>
+  <audio id="background-music" src="/static/sacred_background.mp3" loop autoplay></audio>
+
   <script src="/static/script.js"></script>
 </body>
 </html>
