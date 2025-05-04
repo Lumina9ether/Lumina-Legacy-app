@@ -1,67 +1,91 @@
-
 body {
-    background: black;
-    color: white;
-    font-family: 'Arial', sans-serif;
-    margin: 0;
-    padding: 0;
-    overflow-x: hidden;
+  background: black;
+  color: white;
+  font-family: 'Arial', sans-serif;
+  text-align: center;
+  padding: 40px;
+  margin: 0;
 }
 
-#lumina-orb {
-    width: 150px;
-    height: 150px;
-    border-radius: 50%;
-    margin: 40px auto;
-    background: radial-gradient(circle, #6b00b6, #220066);
-    box-shadow: 0 0 40px #6b00b6;
-    transition: background 0.6s, box-shadow 0.6s;
+header h1 {
+  font-size: 3em;
+  color: #FFD700;
+  margin-bottom: 0.2em;
+}
+
+header p {
+  font-size: 1.2em;
+  color: #bbb;
+  margin-top: 0;
+}
+
+#orb {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  margin: 40px auto;
+  background: radial-gradient(circle, #6b00b6, #220066);
+  box-shadow: 0 0 40px #6b00b6;
+  transition: background 0.6s, box-shadow 0.6s;
 }
 
 .idle {
-    background: radial-gradient(circle, #6b00b6, #220066);
-    box-shadow: 0 0 40px #6b00b6;
+  background: radial-gradient(circle, #6b00b6, #220066);
+  box-shadow: 0 0 40px #6b00b6;
 }
 
 .listening {
-    background: radial-gradient(circle, #00c6ff, #0072ff);
-    box-shadow: 0 0 50px #00c6ff;
+  background: radial-gradient(circle, #00c6ff, #0072ff);
+  box-shadow: 0 0 50px #00c6ff;
 }
 
 .thinking {
-    background: radial-gradient(circle, #ffcc00, #cc8800);
-    box-shadow: 0 0 50px #ffcc00;
-    animation: pulse 1.2s infinite;
+  background: radial-gradient(circle, #ffcc00, #cc8800);
+  box-shadow: 0 0 50px #ffcc00;
+  animation: pulse 1.2s infinite;
 }
 
 .speaking {
-    background: radial-gradient(circle, #00ffcc, #006666);
-    box-shadow: 0 0 60px #00ffcc;
-    animation: pulse 1.5s infinite;
+  background: radial-gradient(circle, #00ffcc, #006666);
+  box-shadow: 0 0 60px #00ffcc;
+  animation: pulse 1.5s infinite;
 }
 
 @keyframes pulse {
-    0% {
-        transform: scale(1);
-        box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
-    }
-    50% {
-        transform: scale(1.1);
-        box-shadow: 0 0 60px rgba(255, 255, 255, 0.4);
-    }
-    100% {
-        transform: scale(1);
-        box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
-    }
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 60px rgba(255, 255, 255, 0.4);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+  }
 }
 
-#subtitles {
-    padding: 20px;
-    text-align: center;
-    font-size: 18px;
-    line-height: 1.6;
-    max-width: 90%;
-    margin: 0 auto;
-    word-wrap: break-word;
-    white-space: pre-wrap;
+#userText, #response-text {
+  font-size: 18px;
+  margin-top: 20px;
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  margin: 10px;
+  cursor: pointer;
+  background-color: #444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  transition: background 0.3s;
+}
+
+button:hover {
+  background-color: #666;
 }
