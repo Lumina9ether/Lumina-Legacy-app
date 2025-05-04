@@ -1,28 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Lumina Legacy</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+    <meta charset="UTF-8">
+    <title>Lumina Legacy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-  <div class="hero">
-    <h1 class="brand-title">Lumina Legacy LLC</h1>
-    <p class="tagline">Your Divine Digital AI Assistant</p>
-  </div>
+    <div class="hero">
+        <h1>Lumina Legacy LLC</h1>
+        <p>Your Divine Digital AI Assistant</p>
+    </div>
 
-  <div class="orb" id="orb"></div>
+    <div id="orb" class="orb"></div>
 
-  <p id="transcript" class="subtitle">You said: <span id="user-text">...</span></p>
-  <p id="response" class="subtitle"></p>
+    <p id="transcript" class="subtitle">Say something to Lumina...</p>
 
-  <button id="start-button" class="mic-button">🎤 Activate Mic</button>
-  <button id="stop-button" class="stop-button">⏹ Stop Lumina</button>
+    <button id="mic-button">🎤 Activate Mic</button>
+    <button id="stop-button">🛑 Stop Lumina</button>
 
-  <audio id="lumina-voice" preload="auto"></audio>
-  <audio id="background-music" src="/static/sacred_background.mp3" loop autoplay></audio>
-
-  <script src="/static/script.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
