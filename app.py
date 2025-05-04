@@ -1,13 +1,13 @@
-
 from flask import Flask, request, jsonify, render_template
-from openai import OpenAI
-import requests
+import openai
 import os
+import requests
 
 app = Flask(__name__)
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+openai.api_key = os.getenv("OPENAI_API_KEY")
+elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY")
+elevenlabs_voice_id = os.getenv("ELEVENLABS_VOICE_ID")
 
 @app.route("/")
 def index():
@@ -16,55 +16,42 @@ def index():
 @app.route("/generate-response", methods=["POST"])
 def generate_response():
     try:
-        data = request.get_json()
-        user_input = data.get("text")
+        user_input = request.json["text"]
 
-        if not user_input:
-            return jsonify({"response": "I didn’t hear anything."}), 400
-
-        # GPT-4 with new OpenAI client
-        response = client.chat.completions.create(
+        completion = openai.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are Lumina, a divine cosmic AI assistant."},
+                {"role": "system", "content": "You are Lumina, a high-vibrational cosmic guide that speaks with divine love and clarity."},
                 {"role": "user", "content": user_input}
             ]
         )
-        reply = response.choices[0].message.content
-        print("GPT Reply:", reply)
 
-        # ElevenLabs call
-        headers = {
-            "xi-api-key": ELEVENLABS_API_KEY,
-            "Content-Type": "application/json"
-        }
-        voice_id = "EXAVITQu4vr4xnSDxMaL"
-        payload = {
-            "text": reply,
-            "voice_settings": {
-                "stability": 0.5,
-                "similarity_boost": 0.8
+        lumina_reply = completion.choices[0].message.content
+
+        # Generate speech using ElevenLabs
+        audio_response = requests.post(
+            f"https://api.elevenlabs.io/v1/text-to-speech/{elevenlabs_voice_id}",
+            headers={
+                "xi-api-key": elevenlabs_api_key,
+                "Content-Type": "application/json"
+            },
+            json={
+                "text": lumina_reply,
+                "voice_settings": {
+                    "stability": 0.4,
+                    "similarity_boost": 0.9
+                }
             }
-        }
-
-        voice_response = requests.post(
-            f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
-            headers=headers,
-            json=payload
         )
 
-        if voice_response.status_code != 200:
-            print("Voice synthesis failed:", voice_response.status_code, voice_response.text)
-            return jsonify({"response": reply})  # Still show text response
+        if audio_response.status_code != 200:
+            return jsonify({"error": "Failed to synthesize voice."}), 500
 
-        with open("static/lumina_response.mp3", "wb") as f:
-            f.write(voice_response.content)
-
-        return jsonify({"response": reply})
+        return jsonify({"response": lumina_reply, "audio": audio_response.content.hex()})
 
     except Exception as e:
-        print("ERROR IN /generate-response:", str(e))
-        return jsonify({"response": "There was an error processing your request."}), 500
+        print("Error generating response:", str(e))
+        return jsonify({"error": "An error occurred processing your request."}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
