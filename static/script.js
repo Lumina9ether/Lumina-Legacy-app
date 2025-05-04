@@ -1,10 +1,15 @@
-
 let micButton = document.getElementById("mic-button");
 let subtitles = document.getElementById("subtitles");
 let orb = document.getElementById("lumina-orb");
 
+function setOrbState(state) {
+    orb.className = state;
+}
+
 async function getResponse(transcript) {
-    orb.className = 'thinking';
+    setOrbState('thinking');
+    await new Promise(resolve => setTimeout(resolve, 5000)); // 5 sec grace
+
     try {
         const res = await fetch('/generate-response', {
             method: 'POST',
@@ -17,25 +22,32 @@ async function getResponse(transcript) {
         }
 
         const data = await res.json();
-        subtitles.innerText = data.response;
 
-        orb.className = 'speaking';
         const audio = new Audio('/static/lumina_response.mp3');
-        audio.play();
+
+        audio.onplay = () => {
+            setOrbState('speaking');
+            subtitles.innerText = data.response;
+            subtitles.scrollIntoView({ behavior: "smooth", block: "end" });
+        };
 
         audio.onended = () => {
-            orb.className = 'idle';
+            setOrbState('idle');
             setTimeout(startListening, 5000);
         };
+
+        audio.play();
+
     } catch (error) {
         console.error("Failed to get Lumina's response:", error);
         subtitles.innerText = "⚠️ There was a problem processing your request.";
-        orb.className = 'idle';
+        setOrbState('idle');
     }
 }
 
 function startListening() {
-    orb.className = 'listening';
+    setOrbState('listening');
+
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     recognition.lang = 'en-US';
     recognition.start();
@@ -48,7 +60,7 @@ function startListening() {
 
     recognition.onerror = () => {
         subtitles.innerText = "🎤 Microphone error. Try again.";
-        orb.className = 'idle';
+        setOrbState('idle');
     };
 }
 
