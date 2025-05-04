@@ -1,5 +1,0 @@
-Flask
-Flask-Cors
-openai
-requests
-gunicorn
