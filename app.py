@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import os
 import openai
 import requests
@@ -8,6 +8,10 @@ app = Flask(__name__)
 openai.api_key = os.getenv("OPENAI_API_KEY")
 elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY")
 voice_id = os.getenv("ELEVENLABS_VOICE_ID")
+
+@app.route("/")
+def home():
+    return render_template("index.html")
 
 @app.route("/generate-response", methods=["POST"])
 def generate_response():
