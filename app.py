@@ -2,8 +2,10 @@ from flask import Flask, render_template, request, send_from_directory, jsonify
 import openai
 import os
 from werkzeug.utils import secure_filename
-
 from dotenv import load_dotenv
+import requests
+import traceback
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -11,7 +13,7 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# Initialize OpenAI client
+# Initialize OpenAI client (new SDK >=1.0)
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.route("/")
@@ -26,9 +28,12 @@ def generate_response():
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
         file.save(filepath)
 
-        # Transcribe audio
+        # Transcribe audio using new SDK
         with open(filepath, "rb") as f:
-            transcript = openai.Audio.transcribe("whisper-1", f)["text"]
+            transcript = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=f
+            ).text
 
         # Generate GPT response
         response = client.chat.completions.create(
@@ -40,8 +45,7 @@ def generate_response():
         )
         lumina_reply = response.choices[0].message.content
 
-        # Text-to-speech with ElevenLabs (placeholder logic)
-        import requests
+        # Text-to-speech with ElevenLabs
         eleven_api = os.getenv("ELEVENLABS_API_KEY")
         voice_id = os.getenv("ELEVENLABS_VOICE_ID")
         tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
@@ -64,8 +68,8 @@ def generate_response():
         return jsonify({"text": lumina_reply})
 
     except Exception as e:
-        print("Error:", e)
-        return jsonify({"error": "Server error."}), 500
+        print("Full error:", traceback.format_exc())
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
