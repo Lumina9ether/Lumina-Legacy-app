@@ -1,65 +1,74 @@
-let mediaRecorder;
-let audioChunks = [];
+let micButton = document.getElementById("mic-button");
+let stopButton = document.getElementById("stop-button");
+let subtitles = document.getElementById("subtitles");
+let orb = document.getElementById("lumina-orb");
+let currentAudio = null;
 
-const micButton = document.getElementById("micButton");
-const subtitles = document.getElementById("subtitles");
-const audioElement = document.getElementById("luminaAudio");
+function setOrbState(state) {
+    orb.className = state;
+}
 
-micButton.addEventListener("click", startListening);
+async function getResponse(transcript) {
+    setOrbState('thinking');
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
-// Automatically restart listening after response playback
-audioElement.addEventListener("ended", () => {
-  setTimeout(() => {
-    startListening();
-  }, 1000); // short delay to give mic reset time
-});
+    try {
+        const res = await fetch('/generate-response', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: transcript })
+        });
+
+        if (!res.ok) throw new Error("Response not ok");
+
+        const data = await res.json();
+        currentAudio = new Audio('/static/lumina_response.mp3');
+
+        currentAudio.onplay = () => {
+            setOrbState('speaking');
+            subtitles.innerText = data.response;
+            subtitles.scrollIntoView({ behavior: "smooth", block: "end" });
+        };
+
+        currentAudio.onended = () => {
+            setOrbState('idle');
+            setTimeout(startListening, 5000);
+        };
+
+        currentAudio.play();
+
+    } catch (error) {
+        console.error("Error:", error);
+        subtitles.innerText = "⚠️ There was a problem.";
+        setOrbState('idle');
+    }
+}
 
 function startListening() {
-  navigator.mediaDevices.getUserMedia({ audio: true })
-    .then((stream) => {
-      mediaRecorder = new MediaRecorder(stream);
-      audioChunks = [];
+    setOrbState('listening');
 
-      mediaRecorder.ondataavailable = (event) => {
-        audioChunks.push(event.data);
-      };
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'en-US';
+    recognition.start();
 
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-        const formData = new FormData();
-        formData.append("audio", audioBlob, "recording.webm");
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        subtitles.innerText = `You said: ${transcript}`;
+        getResponse(transcript);
+    };
 
-        subtitles.textContent = "✨ Processing your request...";
-
-        try {
-          const response = await fetch("/generate-response", {
-            method: "POST",
-            body: formData,
-          });
-
-          if (!response.ok) throw new Error("Failed to get response from Lumina.");
-
-          const data = await response.json();
-          const text = data.text || "✨ Response ready.";
-
-          // Set subtitle, wait for voice to play
-          audioElement.src = "/static/lumina_response.mp3";
-          audioElement.load();
-          audioElement.onplay = () => {
-            subtitles.textContent = text;
-          };
-          audioElement.play();
-        } catch (error) {
-          console.error("Error:", error);
-          subtitles.textContent = "❌ There was a problem generating a response.";
-        }
-      };
-
-      mediaRecorder.start();
-      setTimeout(() => mediaRecorder.stop(), 4000); // 4 seconds capture
-    })
-    .catch((error) => {
-      console.error("Mic access denied or error:", error);
-      subtitles.textContent = "❌ Please allow microphone access.";
-    });
+    recognition.onerror = () => {
+        subtitles.innerText = "🎤 Mic error.";
+        setOrbState('idle');
+    };
 }
+
+micButton.onclick = startListening;
+
+stopButton.onclick = () => {
+    if (currentAudio && !currentAudio.paused) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        setOrbState('idle');
+    }
+};
