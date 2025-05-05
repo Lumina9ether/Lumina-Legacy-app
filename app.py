@@ -31,4 +31,42 @@ def generate_response():
         # Step 1: Get GPT-4 response
         response = openai.ChatCompletion.create(
             model="gpt-4",
-            messages=[{"role": "user", "content":]()
+            messages=[{"role": "user", "content": user_input}]
+        )
+        text_output = response.choices[0].message.content.strip()
+
+        # Step 2: Convert to voice via ElevenLabs
+        tts_url = "https://api.elevenlabs.io/v1/text-to-speech/YOUR_VOICE_ID"
+        headers = {
+            "xi-api-key": ELEVENLABS_API_KEY,
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "text": text_output,
+            "model_id": "eleven_monolingual_v1",
+            "voice_settings": {
+                "stability": 0.5,
+                "similarity_boost": 0.75
+            }
+        }
+
+        tts_response = requests.post(tts_url, json=payload, headers=headers)
+
+        if tts_response.status_code != 200:
+            return jsonify({"error": "TTS failed"}), 500
+
+        with open(OUTPUT_PATH, "wb") as f:
+            f.write(tts_response.content)
+
+        return jsonify({"response": text_output})
+
+    except Exception as e:
+        print("Error:", str(e))
+        return jsonify({"error": "Something went wrong"}), 500
+
+@app.route("/static/<path:filename>")
+def static_files(filename):
+    return send_from_directory("static", filename)
+
+if __name__ == "__main__":
+    app.run(debug=True)
