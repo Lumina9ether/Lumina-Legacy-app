@@ -1,57 +1,87 @@
 body {
-    background: black;
-    color: white;
-    font-family: 'Arial', sans-serif;
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+    font-family: 'Arial', sans-serif;
+    background-color: black;
+    color: white;
+    background-image: url('/static/stars-bg.png'); /* Make sure this path and image exists */
+    background-repeat: repeat;
+    background-size: cover;
+    background-attachment: fixed;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding-top: 40px;
+    z-index: 2;
+    position: relative;
+    text-align: center;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 2.2em;
+}
+
+header p {
+    margin: 5px 0 20px;
+    font-size: 1.2em;
+}
+
+.intro-text {
+    max-width: 90%;
+    font-size: 1em;
+    margin-bottom: 20px;
 }
 
 #lumina-orb {
-    width: 150px;
-    height: 150px;
+    width: 120px;
+    height: 120px;
+    background: radial-gradient(circle, #6a00ff, #2e005e);
     border-radius: 50%;
-    margin: 40px auto;
-    background: radial-gradient(circle, #6b00b6, #220066);
-    box-shadow: 0 0 40px #6b00b6;
-    transition: background 0.6s, box-shadow 0.6s;
-}
-
-.idle {
-    background: radial-gradient(circle, #6b00b6, #220066);
-    box-shadow: 0 0 40px #6b00b6;
-}
-
-.listening {
-    background: radial-gradient(circle, #00c6ff, #0072ff);
-    box-shadow: 0 0 50px #00c6ff;
-}
-
-.thinking {
-    background: radial-gradient(circle, #ffcc00, #cc8800);
-    box-shadow: 0 0 50px #ffcc00;
-    animation: pulse 1.2s infinite;
-}
-
-.speaking {
-    background: radial-gradient(circle, #00ffcc, #006666);
-    box-shadow: 0 0 60px #00ffcc;
-    animation: pulse 1.5s infinite;
+    margin: 10px 0 20px;
+    animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
+    0% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.1); opacity: 1; }
+    100% { transform: scale(1); opacity: 0.8; }
+}
+
+.button-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+button {
+    padding: 10px 16px;
+    font-size: 1em;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#mic-button {
+    background-color: #4444ff;
+    color: white;
+}
+
+#stop-button {
+    background-color: #ff4444;
+    color: white;
 }
 
 #subtitles {
+    font-size: 1rem;
     padding: 20px;
-    text-align: center;
-    font-size: 18px;
-    line-height: 1.6;
     max-width: 90%;
-    margin: 0 auto;
     word-wrap: break-word;
     white-space: pre-wrap;
 }
