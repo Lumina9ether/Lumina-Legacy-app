@@ -1,62 +1,42 @@
-const activateBtn = document.getElementById("activateMicBtn");
-const subtitle = document.getElementById("subtitle");
-const orb = document.getElementById("orb");
+const micButton = document.getElementById("micButton");
+const subtitles = document.getElementById("subtitles");
+const luminaAudio = document.getElementById("luminaAudio");
 
-let recognition;
-let isListening = false;
+const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+recognition.lang = "en-US";
+recognition.interimResults = false;
+recognition.maxAlternatives = 1;
 
-function startMic() {
-  if (!('webkitSpeechRecognition' in window)) {
-    alert("Your browser doesn't support speech recognition.");
-    return;
-  }
+micButton.onclick = () => {
+  subtitles.textContent = "Listening...";
+  recognition.start();
+};
 
-  recognition = new webkitSpeechRecognition();
-  recognition.lang = "en-US";
-  recognition.continuous = false;
-  recognition.interimResults = false;
+recognition.onresult = async (event) => {
+  const transcript = event.results[0][0].transcript;
+  subtitles.textContent = `You said: "${transcript}"`;
 
-  recognition.onstart = () => {
-    isListening = true;
-    orb.classList.add("listening");
-    subtitle.textContent = "🎧 Listening...";
-  };
-
-  recognition.onerror = (event) => {
-    isListening = false;
-    orb.classList.remove("listening");
-    subtitle.textContent = "Error: " + event.error;
-  };
-
-  recognition.onend = () => {
-    isListening = false;
-    orb.classList.remove("listening");
-  };
-
-  recognition.onresult = async (event) => {
-    const transcript = event.results[0][0].transcript;
-    subtitle.textContent = `🗣️ You said: "${transcript}"`;
-
+  try {
     const response = await fetch("/generate-response", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: transcript })
+      body: JSON.stringify({ prompt: transcript }),
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      subtitle.textContent = `💡 Lumina: "${data.response}"`;
+    const data = await response.json();
 
-      const audio = new Audio("/static/lumina_response.mp3");
-      audio.play();
+    if (data.text) {
+      subtitles.textContent = `Lumina: "${data.text}"`;
+      luminaAudio.src = "/static/lumina_response.mp3";
     } else {
-      subtitle.textContent = "⚠️ There was a problem.";
+      subtitles.textContent = "Sorry, Lumina had an error.";
     }
-  };
+  } catch (err) {
+    console.error("Error:", err);
+    subtitles.textContent = "There was a problem generating a response.";
+  }
+};
 
-  recognition.start();
-}
-
-if (activateBtn) {
-  activateBtn.onclick = startMic;
-}
+recognition.onerror = (event) => {
+  subtitles.textContent = `Error occurred in recognition: ${event.error}`;
+};
