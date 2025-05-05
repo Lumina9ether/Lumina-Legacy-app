@@ -1,24 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Lumina Legacy LLC</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+    <meta charset="UTF-8" />
+    <title>Lumina Legacy LLC</title>
+    <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
-  <header>
-    <h1>Lumina Legacy LLC</h1>
-    <p>Your Divine Digital AI Assistant</p>
-  </header>
+    <canvas id="stars"></canvas>
+    <div class="container">
+        <h1>Lumina Legacy LLC</h1>
+        <h2>Your Divine Digital AI Assistant</h2>
 
-  <main>
-    <div class="orb" id="orb"></div>
+        <div class="orb"></div>
 
-    <button id="activateMicBtn">🎤 Activate Mic</button>
-    <p id="subtitle">Subtitles will appear here...</p>
-  </main>
+        <button id="mic-button">🎤 Activate Mic</button>
+        <p id="subtitles">Subtitles will appear here...</p>
+    </div>
 
-  <script src="/static/script.js"></script>
+    <audio id="lumina-voice" preload="auto">
+        <source src="/static/lumina_response.mp3" type="audio/mpeg" />
+    </audio>
+
+    <script src="/static/script.js"></script>
 </body>
 </html>
