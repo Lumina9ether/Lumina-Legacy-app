@@ -1,70 +1,47 @@
-const orb = document.getElementById("orb");
-const subtitle = document.getElementById("subtitle");
-const micButton = document.getElementById("mic-button");
-const voice = document.getElementById("lumina-voice");
-let mediaRecorder, audioChunks = [];
+const micButton = document.getElementById("micButton");
+const subtitles = document.getElementById("subtitles");
+const audioPlayer = document.getElementById("luminaAudio");
 
-function resetSubtitle() {
-    subtitle.textContent = "Your Divine Digital AI Assistant";
-}
+micButton.addEventListener("click", async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mediaRecorder = new MediaRecorder(stream);
+    const audioChunks = [];
 
-async function sendToBackend(audioBlob) {
-    subtitle.textContent = "Listening to you...";
-    orb.classList.add("thinking");
+    mediaRecorder.ondataavailable = event => {
+      audioChunks.push(event.data);
+    };
 
-    const formData = new FormData();
-    formData.append("audio", audioBlob, "input.wav");
+    mediaRecorder.onstop = async () => {
+      const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "input.wav");
 
-    try {
-        const response = await fetch("/generate-response", {
-            method: "POST",
-            body: formData
-        });
+      const response = await fetch("/generate-response", {
+        method: "POST",
+        body: formData
+      });
 
-        const contentType = response.headers.get("content-type");
-        if (!response.ok || !contentType.includes("application/json")) {
-            const errorText = await response.text();
-            throw new Error(`Server error: ${errorText}`);
-        }
+      if (!response.ok) {
+        throw new Error("Failed to get response from Lumina.");
+      }
 
-        const result = await response.json();
-        subtitle.textContent = result.text;
+      const data = await response.json();
 
-        // Play voice
-        voice.src = "/static/lumina_response.mp3";
-        await voice.play();
+      // Update subtitles and play voice
+      subtitles.textContent = data.text || "Lumina replied, but no text returned.";
+      audioPlayer.src = "/static/lumina_response.mp3";
+      audioPlayer.play();
+    };
 
-        // Wait for voice to finish before resetting
-        voice.onended = () => {
-            orb.classList.remove("thinking");
-            setTimeout(resetSubtitle, 3000);
-        };
+    mediaRecorder.start();
 
-    } catch (err) {
-        console.error("Lumina backend error:", err);
-        subtitle.textContent = "There was a problem generating a response.";
-        orb.classList.remove("thinking");
-    }
-}
+    setTimeout(() => {
+      mediaRecorder.stop();
+    }, 4000); // Record 4 seconds of audio
 
-function startRecording() {
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
-
-        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-        mediaRecorder.onstop = () => {
-            const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
-            sendToBackend(audioBlob);
-        };
-
-        mediaRecorder.start();
-
-        setTimeout(() => mediaRecorder.stop(), 4000); // 4-second max listen
-    });
-}
-
-micButton.addEventListener("click", () => {
-    subtitle.textContent = "Mic activated. Say something...";
-    startRecording();
+  } catch (err) {
+    console.error("Mic error or server error:", err);
+    subtitles.textContent = "There was a problem generating a response.";
+  }
 });
