@@ -1,81 +1,82 @@
 const micButton = document.getElementById("mic-button");
 const stopButton = document.getElementById("stop-button");
-const responseText = document.getElementById("response-text");
-const spokenText = document.getElementById("spoken-text");
+const transcriptDisplay = document.getElementById("transcript");
 const orb = document.getElementById("orb");
-const luminaVoice = document.getElementById("lumina-voice");
 
+let mediaRecorder;
+let audioChunks = [];
 let currentAudio = null;
 
-function setOrbState(state) {
-  orb.className = state;
+function glow(state) {
+    orb.style.boxShadow =
+        state === "listening"
+            ? "0 0 40px 20px #00f2ff"
+            : state === "speaking"
+            ? "0 0 40px 20px #a347ff"
+            : "0 0 30px 15px #6e00ff";
 }
 
-function playAudioFromHex(hexAudio) {
-  const byteArray = new Uint8Array(hexAudio.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-  const blob = new Blob([byteArray], { type: 'audio/mpeg' });
-  const url = URL.createObjectURL(blob);
-  luminaVoice.src = url;
-  luminaVoice.play();
-}
+micButton.onclick = async () => {
+    glow("listening");
+    transcriptDisplay.innerText = "🎙️ Listening...";
+    
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
 
-function fetchLuminaResponse(transcript) {
-  setOrbState("thinking");
+    mediaRecorder.ondataavailable = event => audioChunks.push(event.data);
+    mediaRecorder.onstop = async () => {
+        glow("thinking");
+        transcriptDisplay.innerText = "🔮 Processing...";
 
-  setTimeout(() => {
-    fetch("/generate-response", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: transcript })
-    })
-    .then(res => res.json())
-    .then(data => {
-      responseText.textContent = data.response;
-      playAudioFromHex(data.audio);
-      setOrbState("speaking");
-    })
-    .catch(err => {
-      console.error("Error:", err);
-      responseText.textContent = "An error occurred processing your request.";
-      setOrbState("idle");
-    });
-  }, 5000); // Grace period
-}
+        const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+        const formData = new FormData();
+        formData.append("audio", audioBlob);
 
-function startListening() {
-  setOrbState("listening");
+        const whisperRes = await fetch("/transcribe", {
+            method: "POST",
+            body: formData,
+        });
 
-  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-  recognition.lang = "en-US";
-  recognition.start();
+        const whisperData = await whisperRes.json();
+        const userInput = whisperData.transcript;
 
-  recognition.onresult = function (event) {
-    const transcript = event.results[0][0].transcript;
-    spokenText.textContent = transcript;
-    fetchLuminaResponse(transcript);
-  };
+        transcriptDisplay.innerText = `🗣️ You said: "${userInput}"`;
 
-  recognition.onerror = function () {
-    spokenText.textContent = "Mic error.";
-    setOrbState("idle");
-  };
-}
+        setTimeout(async () => {
+            const res = await fetch("/generate-response", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: userInput }),
+            });
 
-micButton.addEventListener("click", () => {
-  startListening();
-  stopButton.style.display = "inline-block";
-});
+            const data = await res.json();
+            if (data.reply) {
+                transcriptDisplay.innerText = `💡 Lumina: "${data.reply}"`;
+                glow("speaking");
 
-stopButton.addEventListener("click", () => {
-  if (!luminaVoice.paused) {
-    luminaVoice.pause();
-    luminaVoice.currentTime = 0;
-  }
-  setOrbState("idle");
-  stopButton.style.display = "none";
-});
+                const voiceRes = await fetch("/speak", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: data.reply }),
+                });
 
-luminaVoice.onended = () => {
-  setOrbState("idle");
-  stopButton.style.display = "none";
+                const audioURL = URL.createObjectURL(await voiceRes.blob());
+                currentAudio = new Audio(audioURL);
+                currentAudio.play();
+                currentAudio.onended = () => glow("idle");
+            } else {
+                transcriptDisplay.innerText = "⚠️ There was a problem.";
+                glow("idle");
+            }
+        }, 5000); // ⏱ 5-second grace period
+    };
+
+    mediaRecorder.start();
+    setTimeout(() => mediaRecorder.stop(), 5000); // ⏱ Record for 5 seconds
+};
+
+stopButton.onclick = () => {
+    if (currentAudio) currentAudio.pause();
+    glow("idle");
 };
