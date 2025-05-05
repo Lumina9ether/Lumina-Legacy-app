@@ -2,8 +2,8 @@ const activateBtn = document.getElementById("activateMicBtn");
 const subtitle = document.getElementById("subtitle");
 const orb = document.getElementById("orb");
 
-let isListening = false;
 let recognition;
+let isListening = false;
 
 function startMic() {
   if (!('webkitSpeechRecognition' in window)) {
@@ -19,7 +19,7 @@ function startMic() {
   recognition.onstart = () => {
     isListening = true;
     orb.classList.add("listening");
-    subtitle.textContent = "Listening...";
+    subtitle.textContent = "🎧 Listening...";
   };
 
   recognition.onerror = (event) => {
@@ -35,7 +35,7 @@ function startMic() {
 
   recognition.onresult = async (event) => {
     const transcript = event.results[0][0].transcript;
-    subtitle.textContent = `You said: "${transcript}"`;
+    subtitle.textContent = `🗣️ You said: "${transcript}"`;
 
     const response = await fetch("/generate-response", {
       method: "POST",
@@ -45,12 +45,12 @@ function startMic() {
 
     if (response.ok) {
       const data = await response.json();
-      subtitle.textContent = `Lumina: "${data.response}"`;
+      subtitle.textContent = `💡 Lumina: "${data.response}"`;
 
       const audio = new Audio("/static/lumina_response.mp3");
       audio.play();
     } else {
-      subtitle.textContent = "There was a problem processing your request.";
+      subtitle.textContent = "⚠️ There was a problem.";
     }
   };
 
