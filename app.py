@@ -1,11 +1,11 @@
 from flask import Flask, request, jsonify, render_template
 import os
-import openai
 import requests
+from openai import OpenAI
 
 app = Flask(__name__)
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY")
 voice_id = os.getenv("ELEVENLABS_VOICE_ID")
 
@@ -19,15 +19,14 @@ def generate_response():
         data = request.get_json()
         prompt = data["prompt"]
 
-        # GPT response
-        gpt_response = openai.ChatCompletion.create(
+        gpt_response = client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are Lumina, a cosmic AI assistant."},
                 {"role": "user", "content": prompt},
             ]
         )
-        response_text = gpt_response["choices"][0]["message"]["content"]
+        response_text = gpt_response.choices[0].message.content
 
         # ElevenLabs audio
         voice_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
