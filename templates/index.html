@@ -1,50 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Lumina Legacy LLC</title>
-    <link rel="stylesheet" href="/static/styles.css">
-    <style>
-        body {
-            background: black;
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-        }
-
-        canvas#stars {
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-
-        main {
-            position: relative;
-            z-index: 2;
-            padding: 20px;
-            text-align: center;
-            color: white;
-        }
-
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            margin: 5px;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <canvas id="stars"></canvas>
+    <header>
+        <h1>Lumina Legacy LLC</h1>
+        <p>Your Divine Digital AI Assistant</p>
+    </header>
 
     <main>
-        <header>
-            <h1 style="font-size: 2.5em;">Lumina Legacy LLC</h1>
-            <p style="font-size: 1.2em; color: #ccc;">Your Divine Digital AI Assistant</p>
-        </header>
+        <div class="orb-container">
+            <div id="orb" class="orb idle"></div>
+        </div>
 
-        <section id="hero" style="margin-top: 30px;">
-            <p style="
+        <div id="mic-container">
+            <button id="mic-btn">🎤 Activate Mic</button>
+            <button id="stop-btn" style="display: none;">⏹️ Stop</button>
+        </div>
+
+        <div id="subtitle-box">
+            <p id="subtitles">Subtitles will appear here...</p>
+        </div>
+
+        <div id="status-message"></div>
+    </main>
+
+    <audio id="lumina-voice" preload="auto"></audio>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
