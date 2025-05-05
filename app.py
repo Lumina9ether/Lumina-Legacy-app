@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, render_template
 import os
 import requests
+import tempfile
 from openai import OpenAI
 
 app = Flask(__name__)
@@ -16,14 +17,22 @@ def home():
 @app.route("/generate-response", methods=["POST"])
 def generate_response():
     try:
-        data = request.get_json()
-        prompt = data["prompt"]
+        # Save uploaded audio
+        audio_file = request.files["audio"]
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_audio:
+            audio_path = temp_audio.name
+            audio_file.save(audio_path)
 
+        # Transcribe audio with OpenAI Whisper
+        with open(audio_path, "rb") as f:
+            transcript = client.audio.transcriptions.create(model="whisper-1", file=f).text
+
+        # GPT-4 response
         gpt_response = client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are Lumina, a cosmic AI assistant."},
-                {"role": "user", "content": prompt},
+                {"role": "user", "content": transcript},
             ]
         )
         response_text = gpt_response.choices[0].message.content
