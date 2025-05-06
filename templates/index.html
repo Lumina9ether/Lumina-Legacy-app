@@ -1,79 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Lumina Legacy LLC</title>
-    <link rel="stylesheet" href="/static/styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lumina Legacy LLC</title>
+  <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
-    <canvas id="stars"></canvas>
-
-    <main>
-        <header>
-            <h1 style="font-size: 2.5em;">Lumina Legacy LLC</h1>
-            <p style="font-size: 1.2em; color: #ccc;">Your Divine Digital AI Assistant</p>
-        </header>
-
-        <section id="hero" style="margin-top: 30px;">
-            <p style="font-size: 1.1em; color: #bbb;">
-                Speak to Lumina and let your vision unfold. Activate the mic below to begin.
-            </p>
-        </section>
-
-        <div id="lumina-orb" class="idle"></div>
-
-        <div style="margin: 20px;">
-            <button id="mic-button">🎤 Activate Mic</button>
-            <button id="stop-button">🛑 Stop Talking</button>
-        </div>
-
-        <div id="subtitles"></div>
-    </main>
-
-    <script src="/static/script.js"></script>
-    <script>
-        const canvas = document.getElementById("stars");
-        const ctx = canvas.getContext("2d");
-        let stars = [];
-
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-
-        function createStars(count) {
-            stars = [];
-            for (let i = 0; i < count; i++) {
-                stars.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    radius: Math.random() * 1.5,
-                    alpha: Math.random(),
-                    delta: Math.random() * 0.02
-                });
-            }
-        }
-
-        function drawStars() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for (let star of stars) {
-                ctx.beginPath();
-                ctx.arc(star.x, star.y, star.radius, 0, 2 * Math.PI);
-                ctx.fillStyle = "rgba(255, 255, 255," + star.alpha + ")";
-                ctx.fill();
-                star.alpha += star.delta;
-                if (star.alpha <= 0 || star.alpha >= 1) star.delta *= -1;
-            }
-        }
-
-        window.addEventListener("resize", () => {
-            resizeCanvas();
-            createStars(150);
-        });
-
-        resizeCanvas();
-        createStars(150);
-        setInterval(drawStars, 50);
-    </script>
+  <canvas id="stars"></canvas>
+  <div class="container">
+    <h1>Lumina Legacy LLC</h1>
+    <h3>Your Divine Digital AI Assistant</h3>
+    <p>Speak to Lumina and let your vision unfold. Activate the mic below to begin.</p>
+    <button id="micButton">🎤 Activate Mic</button>
+    <button id="stopButton">🛑 Stop Talking</button>
+    <div id="orb" class="orb"></div>
+    <div id="subtitles">💬 Awaiting your divine message...</div>
+  </div>
+  <script src="/static/stars.js"></script>
+  <script src="/static/script.js"></script>
 </body>
 </html>
