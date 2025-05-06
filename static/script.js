@@ -1,74 +1,79 @@
-let micButton = document.getElementById("mic-button");
-let stopButton = document.getElementById("stop-button");
-let subtitles = document.getElementById("subtitles");
-let orb = document.getElementById("lumina-orb");
-let currentAudio = null;
+const micButton = document.getElementById("micButton");
+const stopButton = document.getElementById("stopButton");
+const orb = document.getElementById("orb");
+const subtitles = document.getElementById("subtitles");
 
-function setOrbState(state) {
-    orb.className = state;
-}
-
-async function getResponse(transcript) {
-    setOrbState('thinking');
-    await new Promise(resolve => setTimeout(resolve, 5000));
-
-    try {
-        const res = await fetch('/generate-response', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: transcript })
-        });
-
-        if (!res.ok) throw new Error("Response not ok");
-
-        const data = await res.json();
-        currentAudio = new Audio('/static/lumina_response.mp3');
-
-        currentAudio.onplay = () => {
-            setOrbState('speaking');
-            subtitles.innerText = data.response;
-            subtitles.scrollIntoView({ behavior: "smooth", block: "end" });
-        };
-
-        currentAudio.onended = () => {
-            setOrbState('idle');
-            setTimeout(startListening, 5000);
-        };
-
-        currentAudio.play();
-
-    } catch (error) {
-        console.error("Error:", error);
-        subtitles.innerText = "⚠️ There was a problem.";
-        setOrbState('idle');
-    }
-}
+const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+recognition.continuous = false;
+recognition.interimResults = false;
+recognition.lang = "en-US";
 
 function startListening() {
-    setOrbState('listening');
-
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = 'en-US';
-    recognition.start();
-
-    recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        subtitles.innerText = `You said: ${transcript}`;
-        getResponse(transcript);
-    };
-
-    recognition.onerror = () => {
-        subtitles.innerText = "🎤 Mic error.";
-        setOrbState('idle');
-    };
+  recognition.start();
+  micButton.disabled = true;
+  subtitles.innerText = "🎙️ Listening...";
 }
 
-micButton.onclick = startListening;
+micButton.addEventListener("click", startListening);
 
-stopButton.onclick = () => {
-    if (currentAudio && !currentAudio.paused) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-        setOrbState('idle');
-    }
+stopButton.addEventListener("click", () => {
+  const audio = document.getElementById("lumina-voice");
+  if (audio && !audio.paused) {
+    audio.pause();
+    audio.currentTime = 0;
+    console.log("Lumina stopped.");
+  }
+});
+
+recognition.onresult = async (event) => {
+  const transcript = event.results[0][0].transcript;
+  console.log("You said:", transcript);
+  subtitles.innerText = `💬 ${transcript}`;
+  micButton.disabled = false;
+
+  try {
+    const response = await fetch("/generate-response", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: transcript })
+    });
+
+    if (!response.ok) throw new Error("Response not ok");
+
+    const data = await response.json();
+    subtitles.innerText = `🔊 ${data.text}`;
+
+    const audio = new Audio(data.audio_url);
+    audio.id = "lumina-voice";
+    document.body.appendChild(audio);
+    audio.play();
+
+  } catch (err) {
+    console.error("Error:", err);
+    subtitles.innerText = "⚠️ There was a problem.";
+    micButton.disabled = false;
+  }
 };
+
+recognition.onerror = (err) => {
+  console.error("Mic error:", err);
+  subtitles.innerText = "🎤 Mic error.";
+  micButton.disabled = false;
+};
+
+// Wake-word (optional)
+const wakeRecognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+wakeRecognition.continuous = true;
+wakeRecognition.interimResults = false;
+
+wakeRecognition.onresult = (event) => {
+  const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+  if (transcript.includes("hey lumina")) {
+    console.log("🌟 Wake word detected!");
+    wakeRecognition.stop();
+    startListening();
+    setTimeout(() => wakeRecognition.start(), 10000); // restart after 10s
+  }
+};
+
+wakeRecognition.start();
