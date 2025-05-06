@@ -3,6 +3,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const stopBtn = document.getElementById("stopBtn");
     const orb = document.getElementById("orb");
     const subtitle = document.getElementById("subtitle");
+
+    console.log("activateBtn:", activateBtn);
+    console.log("stopBtn:", stopBtn);
+    console.log("orb:", orb);
+    console.log("subtitle:", subtitle);
+
+    if (!activateBtn || !stopBtn || !orb || !subtitle) {
+        console.error("One or more DOM elements are missing.");
+        return;
+    }
+
     const audio = new Audio();
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     recognition.lang = "en-US";
@@ -40,8 +51,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const data = await response.json();
             subtitle.innerText = `✨ ${data.response}`;
-
-            // Play voice response
             audio.src = data.audio_url;
             audio.play();
         } catch (err) {
@@ -50,7 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (listening) {
-            setTimeout(() => recognition.start(), 500); // Auto-restart
+            setTimeout(() => recognition.start(), 500);
         }
     };
 
