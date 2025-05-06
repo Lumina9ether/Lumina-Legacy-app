@@ -1,101 +1,73 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const startBtn = document.getElementById("startBtn");
-  const stopBtn = document.getElementById("stopBtn");
-  const orb = document.getElementById("orb");
-  const subtitle = document.getElementById("subtitle");
-  const synth = window.speechSynthesis;
+window.addEventListener('DOMContentLoaded', () => {
+    const startButton = document.getElementById('start-btn');
+    const stopButton = document.getElementById('stop-btn');
+    const orb = document.querySelector('.orb');
+    const subtitle = document.getElementById('subtitle');
 
-  if (!startBtn || !stopBtn || !orb || !subtitle) {
-    console.error("❌ DOM elements missing.");
-    return;
-  }
+    let recognition;
+    let listening = false;
 
-  let recognition;
-  let isListening = false;
+    async function getResponse(text) {
+        subtitle.innerText = '✨ Thinking...';
 
-  function startListening() {
-    if (isListening) return;
+        const response = await fetch('/generate-response', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_input: text })
+        });
 
-    try {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognition = new SpeechRecognition();
-      recognition.lang = "en-US";
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-
-      recognition.start();
-      isListening = true;
-      subtitle.innerHTML = "🎤 Listening...";
-      orb.classList.add("pulse");
-
-      recognition.onresult = async (event) => {
-        const transcript = event.results[0][0].transcript;
-        subtitle.innerHTML = `🗣️ You said: ${transcript}`;
-        recognition.stop();
-        isListening = false;
-        orb.classList.remove("pulse");
-
-        try {
-          const response = await fetch("/generate-response", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt: transcript }),
-          });
-
-          if (!response.ok) {
-            throw new Error("Response not ok");
-          }
-
-          const data = await response.json();
-          subtitle.innerHTML = `✨ ${data.response}`;
-          speak(data.response);
-        } catch (err) {
-          console.error("Error generating response:", err);
-          subtitle.innerHTML = "⚠️ There was a problem.";
+        if (!response.ok) {
+            subtitle.innerText = '⚠️ There was a problem.';
+            throw new Error('Response not ok');
         }
-      };
 
-      recognition.onerror = (event) => {
-        console.error("Recognition error:", event.error);
-        subtitle.innerHTML = "⚠️ Mic error.";
-        isListening = false;
-        orb.classList.remove("pulse");
-      };
-
-      recognition.onend = () => {
-        isListening = false;
-        orb.classList.remove("pulse");
-      };
-    } catch (err) {
-      console.error("Speech recognition not supported:", err);
-      subtitle.innerHTML = "⚠️ Mic not supported in this browser.";
+        const data = await response.json();
+        const audio = new Audio(data.audio_url);
+        subtitle.innerText = data.text;
+        audio.play();
     }
-  }
 
-  function stopListening() {
-    if (recognition && isListening) {
-      recognition.stop();
-      isListening = false;
-      orb.classList.remove("pulse");
-      subtitle.innerHTML = "⏹️ Stopped listening.";
+    function startListening() {
+        if (!('webkitSpeechRecognition' in window)) {
+            alert('Speech recognition not supported in this browser.');
+            return;
+        }
+
+        recognition = new webkitSpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+            listening = true;
+            orb.classList.add('glow');
+            subtitle.innerText = '🎤 Listening...';
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            subtitle.innerText = `You said: ${transcript}`;
+            getResponse(transcript);
+        };
+
+        recognition.onerror = (event) => {
+            subtitle.innerText = '⚠️ Mic error.';
+        };
+
+        recognition.onend = () => {
+            listening = false;
+            orb.classList.remove('glow');
+        };
+
+        recognition.start();
     }
-  }
 
-  function speak(text) {
-    if (synth.speaking) synth.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-US";
-    synth.speak(utterance);
-  }
+    function stopListening() {
+        if (recognition && listening) {
+            recognition.stop();
+        }
+    }
 
-  startBtn.addEventListener("click", startListening);
-  stopBtn.addEventListener("click", stopListening);
-
-  // Preemptively ask for mic access
-  navigator.mediaDevices.getUserMedia({ audio: true }).then(() => {
-    console.log("🎤 Mic access granted.");
-  }).catch(err => {
-    console.warn("⚠️ Mic access denied:", err);
-    subtitle.innerHTML = "⚠️ Mic permission denied.";
-  });
+    startButton.addEventListener('click', startListening);
+    stopButton.addEventListener('click', stopListening);
 });
