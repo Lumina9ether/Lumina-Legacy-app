@@ -2,29 +2,27 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lumina Legacy LLC</title>
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-    <!-- Star background canvas -->
     <canvas id="stars"></canvas>
 
-    <!-- Main content container -->
     <div class="container">
         <h1>Lumina Legacy LLC</h1>
         <h2>Your Divine Digital AI Assistant</h2>
         <p>Speak to Lumina and let your vision unfold. Activate the mic below to begin.</p>
-        
+
         <div class="controls">
-            <button id="startBtn">🎙️ Activate Mic</button>
+            <button id="activateBtn">🎙️ Activate Mic</button>
             <button id="stopBtn">🔴 Stop Talking</button>
         </div>
 
-        <div id="orb"></div>
+        <div id="orb" class="orb"></div>
         <div id="subtitle">✨ Awaiting your divine message...</div>
     </div>
 
-    <!-- Star and interaction scripts -->
     <script src="/static/stars.js"></script>
     <script src="/static/script.js"></script>
 </body>
