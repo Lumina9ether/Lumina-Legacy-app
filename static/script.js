@@ -1,73 +1,80 @@
-window.addEventListener('DOMContentLoaded', () => {
-    const startButton = document.getElementById('start-btn');
-    const stopButton = document.getElementById('stop-btn');
-    const orb = document.querySelector('.orb');
-    const subtitle = document.getElementById('subtitle');
+let recognition;
+let isListening = false;
 
-    let recognition;
-    let listening = false;
+// DOM Elements
+const micButton = document.getElementById("start-recording");
+const stopButton = document.getElementById("stop-recording");
+const orb = document.getElementById("orb");
+const responseElement = document.getElementById("response");
 
-    async function getResponse(text) {
-        subtitle.innerText = '✨ Thinking...';
+// Setup mic
+if ('webkitSpeechRecognition' in window) {
+    recognition = new webkitSpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
 
-        const response = await fetch('/generate-response', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_input: text })
-        });
+    recognition.onstart = () => {
+        isListening = true;
+        orb.classList.add("listening");
+        responseElement.innerHTML = "🎤 Listening...";
+    };
 
-        if (!response.ok) {
-            subtitle.innerText = '⚠️ There was a problem.';
-            throw new Error('Response not ok');
+    recognition.onresult = async (event) => {
+        const transcript = event.results[0][0].transcript;
+        responseElement.innerHTML = `✨ You said: ${transcript}`;
+
+        try {
+            const response = await fetch('/generate-response', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: transcript })
+            });
+
+            if (!response.ok) throw new Error('Response not ok');
+
+            const data = await response.json();
+
+            responseElement.innerHTML = `💬 ${data.response}`;
+            playAudio(data.audio_url);
+        } catch (error) {
+            responseElement.innerHTML = "⚠️ There was a problem.";
+            console.error("Error:", error);
         }
 
-        const data = await response.json();
-        const audio = new Audio(data.audio_url);
-        subtitle.innerText = data.text;
-        audio.play();
-    }
+        stopListening();
+    };
 
-    function startListening() {
-        if (!('webkitSpeechRecognition' in window)) {
-            alert('Speech recognition not supported in this browser.');
-            return;
-        }
+    recognition.onerror = (event) => {
+        console.error("Recognition error:", event.error);
+        responseElement.innerHTML = "⚠️ Mic error.";
+        stopListening();
+    };
+} else {
+    alert("Your browser doesn't support Speech Recognition.");
+}
 
-        recognition = new webkitSpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
-
-        recognition.onstart = () => {
-            listening = true;
-            orb.classList.add('glow');
-            subtitle.innerText = '🎤 Listening...';
-        };
-
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            subtitle.innerText = `You said: ${transcript}`;
-            getResponse(transcript);
-        };
-
-        recognition.onerror = (event) => {
-            subtitle.innerText = '⚠️ Mic error.';
-        };
-
-        recognition.onend = () => {
-            listening = false;
-            orb.classList.remove('glow');
-        };
-
+function startListening() {
+    if (recognition && !isListening) {
         recognition.start();
     }
+}
 
-    function stopListening() {
-        if (recognition && listening) {
-            recognition.stop();
-        }
+function stopListening() {
+    if (recognition && isListening) {
+        recognition.stop();
+        orb.classList.remove("listening");
+        isListening = false;
     }
+}
 
-    startButton.addEventListener('click', startListening);
-    stopButton.addEventListener('click', stopListening);
-});
+function playAudio(url) {
+    const audio = new Audio(url);
+    audio.play();
+}
+
+// Event Listeners
+micButton.addEventListener("click", startListening);
+stopButton.addEventListener("click", stopListening);
