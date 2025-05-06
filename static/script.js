@@ -1,80 +1,62 @@
-let recognition;
-let isListening = false;
-
-// DOM Elements
-const micButton = document.getElementById("start-recording");
-const stopButton = document.getElementById("stop-recording");
-const orb = document.getElementById("orb");
-const responseElement = document.getElementById("response");
-
-// Setup mic
-if ('webkitSpeechRecognition' in window) {
-    recognition = new webkitSpeechRecognition();
-    recognition.continuous = false;
+document.addEventListener("DOMContentLoaded", () => {
+    const activateBtn = document.getElementById("activateBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const orb = document.getElementById("orb");
+    const subtitle = document.getElementById("subtitle");
+    const audio = new Audio();
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = "en-US";
     recognition.interimResults = false;
-    recognition.lang = 'en-US';
+    recognition.maxAlternatives = 1;
 
-    recognition.onstart = () => {
-        isListening = true;
+    let listening = false;
+
+    activateBtn.addEventListener("click", () => {
+        recognition.start();
+        subtitle.innerText = "🎙️ Listening...";
         orb.classList.add("listening");
-        responseElement.innerHTML = "🎤 Listening...";
-    };
+        listening = true;
+    });
+
+    stopBtn.addEventListener("click", () => {
+        recognition.stop();
+        subtitle.innerText = "🛑 Stopped.";
+        orb.classList.remove("listening");
+        listening = false;
+    });
 
     recognition.onresult = async (event) => {
-        const transcript = event.results[0][0].transcript;
-        responseElement.innerHTML = `✨ You said: ${transcript}`;
+        const userMessage = event.results[0][0].transcript;
+        subtitle.innerText = `🗣️ You said: ${userMessage}`;
 
         try {
-            const response = await fetch('/generate-response', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ message: transcript })
+            const response = await fetch("/generate-response", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: userMessage })
             });
 
-            if (!response.ok) throw new Error('Response not ok');
+            if (!response.ok) throw new Error("Response not ok");
 
             const data = await response.json();
+            subtitle.innerText = `✨ ${data.response}`;
 
-            responseElement.innerHTML = `💬 ${data.response}`;
-            playAudio(data.audio_url);
-        } catch (error) {
-            responseElement.innerHTML = "⚠️ There was a problem.";
-            console.error("Error:", error);
+            // Play voice response
+            audio.src = data.audio_url;
+            audio.play();
+        } catch (err) {
+            console.error(err);
+            subtitle.innerText = "⚠️ There was a problem.";
         }
 
-        stopListening();
+        if (listening) {
+            setTimeout(() => recognition.start(), 500); // Auto-restart
+        }
     };
 
-    recognition.onerror = (event) => {
-        console.error("Recognition error:", event.error);
-        responseElement.innerHTML = "⚠️ Mic error.";
-        stopListening();
-    };
-} else {
-    alert("Your browser doesn't support Speech Recognition.");
-}
-
-function startListening() {
-    if (recognition && !isListening) {
-        recognition.start();
-    }
-}
-
-function stopListening() {
-    if (recognition && isListening) {
-        recognition.stop();
+    recognition.onerror = (err) => {
+        console.error("Recognition error:", err);
+        subtitle.innerText = "❌ Mic error.";
         orb.classList.remove("listening");
-        isListening = false;
-    }
-}
-
-function playAudio(url) {
-    const audio = new Audio(url);
-    audio.play();
-}
-
-// Event Listeners
-micButton.addEventListener("click", startListening);
-stopButton.addEventListener("click", stopListening);
+    };
+});
