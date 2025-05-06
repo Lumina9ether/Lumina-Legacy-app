@@ -1,70 +1,77 @@
-let recognizing = false;
-let recognition;
-let synth = window.speechSynthesis;
+document.addEventListener('DOMContentLoaded', function () {
+    const micButton = document.getElementById('activate-mic');
+    const stopButton = document.getElementById('stop-button');
+    const orb = document.getElementById('orb');
+    const subtitle = document.getElementById('subtitle');
 
-const micBtn = document.getElementById("start-btn");
-const stopBtn = document.getElementById("stop-btn");
-const orb = document.getElementById("orb");
-const subtitle = document.getElementById("subtitle");
+    let recognition;
+    let isListening = false;
 
-function initializeRecognition() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SpeechRecognition();
-  recognition.lang = "en-US";
-  recognition.continuous = false;
-  recognition.interimResults = false;
-
-  recognition.onstart = () => {
-    recognizing = true;
-    orb.style.boxShadow = "0 0 40px 20px #9c27b0";
-    subtitle.innerHTML = "🎤 Listening...";
-  };
-
-  recognition.onend = () => {
-    recognizing = false;
-    orb.style.boxShadow = "0 0 30px 15px #6a1b9a";
-    subtitle.innerHTML = "✨ Awaiting your divine message...";
-  };
-
-  recognition.onerror = (event) => {
-    console.error("Recognition error:", event.error);
-    subtitle.innerHTML = "⚠️ There was a problem.";
-  };
-
-  recognition.onresult = async (event) => {
-    const transcript = event.results[0][0].transcript;
-    subtitle.innerHTML = `🗣️ You said: "${transcript}"`;
-
-    try {
-      const response = await fetch("/generate-response", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ message: transcript })
-      });
-
-      if (!response.ok) throw new Error("Network response not ok");
-
-      const data = await response.json();
-      const reply = data.response;
-      subtitle.innerHTML = `💬 Lumina: "${reply}"`;
-
-      const utter = new SpeechSynthesisUtterance(reply);
-      utter.lang = "en-US";
-      synth.speak(utter);
-    } catch (err) {
-      console.error("Fetch error:", err);
-      subtitle.innerHTML = "⚠️ Lumina couldn't respond. Please try again.";
+    if (!('webkitSpeechRecognition' in window)) {
+        alert('Your browser does not support Speech Recognition.');
+        return;
     }
-  };
-}
 
-micBtn.addEventListener("click", () => {
-  if (!recognition) initializeRecognition();
-  if (!recognizing) recognition.start();
-});
+    recognition = new webkitSpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
 
-stopBtn.addEventListener("click", () => {
-  if (recognizing && recognition) recognition.stop();
+    micButton.addEventListener('click', () => {
+        recognition.start();
+        isListening = true;
+        orb.classList.add('listening');
+        subtitle.innerHTML = '🎙️ Listening...';
+        micButton.disabled = true;
+        stopButton.disabled = false;
+    });
+
+    stopButton.addEventListener('click', () => {
+        recognition.stop();
+        isListening = false;
+        orb.classList.remove('listening');
+        subtitle.innerHTML = '✨ Awaiting your divine message...';
+        micButton.disabled = false;
+        stopButton.disabled = true;
+    });
+
+    recognition.onresult = async (event) => {
+        const transcript = event.results[0][0].transcript;
+        subtitle.innerHTML = `🗣️ You said: ${transcript}`;
+        orb.classList.remove('listening');
+        micButton.disabled = false;
+        stopButton.disabled = true;
+
+        try {
+            const response = await fetch('/generate-response', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: transcript }),
+            });
+
+            const data = await response.json();
+            if (data && data.reply) {
+                speakResponse(data.reply);
+                subtitle.innerHTML = `💡 Lumina: ${data.reply}`;
+            } else {
+                subtitle.innerHTML = '⚠️ Lumina could not respond.';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            subtitle.innerHTML = '⚠️ There was a problem.';
+        }
+    };
+
+    function speakResponse(text) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        window.speechSynthesis.speak(utterance);
+    }
+
+    recognition.onerror = (event) => {
+        console.error('Speech recognition error', event);
+        subtitle.innerHTML = '⚠️ Mic error occurred.';
+        micButton.disabled = false;
+        stopButton.disabled = true;
+    };
 });
