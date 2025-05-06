@@ -1,69 +1,63 @@
 import os
-import openai
-import requests
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from dotenv import load_dotenv
-
-load_dotenv()
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
-elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY")
-voice_id = os.getenv("ELEVENLABS_VOICE_ID")
+import openai
+import requests
+from werkzeug.utils import secure_filename
+import traceback
 
 app = Flask(__name__)
 CORS(app)
+
+UPLOAD_FOLDER = 'static'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Load keys from environment
+openai.api_key = os.environ.get("OPENAI_API_KEY")
+ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
+VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID")
 
 @app.route("/")
 def index():
     return send_from_directory("templates", "index.html")
 
-@app.route("/static/<path:path>")
-def send_static(path):
-    return send_from_directory("static", path)
-
 @app.route("/generate-response", methods=["POST"])
 def generate_response():
     try:
-        prompt = request.json.get("prompt", "")
-        print("User prompt:", prompt)
+        data = request.get_json()
+        user_message = data.get("message", "")
+        if not user_message:
+            return jsonify({"error": "No message provided"}), 400
 
-        completion = openai.ChatCompletion.create(
+        # 1. Get GPT-4 Response
+        gpt_response = openai.ChatCompletion.create(
             model="gpt-4",
-            messages=[{"role": "user", "content": prompt}]
+            messages=[
+                {"role": "system", "content": "You are Lumina, a divine, cosmic, spiritual AI guide."},
+                {"role": "user", "content": user_message}
+            ]
         )
-        response_text = completion.choices[0].message.content.strip()
-        print("GPT response:", response_text)
+        lumina_reply = gpt_response['choices'][0]['message']['content']
 
-        # ElevenLabs request
-        tts_response = requests.post(
-            f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
-            headers={
-                "xi-api-key": elevenlabs_api_key,
-                "Content-Type": "application/json"
-            },
-            json={
-                "text": response_text,
-                "voice_settings": {
-                    "stability": 0.4,
-                    "similarity_boost": 0.75
-                }
+        # 2. Generate voice from ElevenLabs
+        headers = {
+            "xi-api-key": ELEVENLABS_API_KEY,
+            "Content-Type": "application/json"
+        }
+
+        voice_payload = {
+            "text": lumina_reply,
+            "voice_settings": {
+                "stability": 0.5,
+                "similarity_boost": 0.75
             }
-        )
+        }
 
-        if tts_response.status_code != 200:
-            print("TTS Error:", tts_response.status_code, tts_response.text)
-            return jsonify({"error": "Voice generation failed"}), 500
+        voice_url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
+        response = requests.post(voice_url, json=voice_payload, headers=headers)
 
-        audio_path = "static/lumina_response.mp3"
-        with open(audio_path, "wb") as f:
-            f.write(tts_response.content)
+        if response.status_code != 200:
+            raise Exception(f"ElevenLabs error: {response.text}")
 
-        return jsonify({"text": response_text, "audio_url": f"/{audio_path}"})
-
-    except Exception as e:
-        print("❌ SERVER ERROR:", str(e))
-        return jsonify({"error": "Server exception occurred"}), 500
-
-if __name__ == "__main__":
-    app.run(debug=True)
+        filename = "lumina_response.mp3"
+        filepath = os
