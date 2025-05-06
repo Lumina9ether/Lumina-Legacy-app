@@ -1,10 +1,33 @@
+import os
+import openai
+import requests
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+from dotenv import load_dotenv
+
+load_dotenv()
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
+elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY")
+voice_id = os.getenv("ELEVENLABS_VOICE_ID")
+
+app = Flask(__name__)
+CORS(app)
+
+@app.route("/")
+def index():
+    return send_from_directory("templates", "index.html")
+
+@app.route("/static/<path:path>")
+def send_static(path):
+    return send_from_directory("static", path)
+
 @app.route("/generate-response", methods=["POST"])
 def generate_response():
     try:
         prompt = request.json.get("prompt", "")
         print("User prompt:", prompt)
 
-        # === GPT COMPLETION ===
         completion = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}]
@@ -12,7 +35,7 @@ def generate_response():
         response_text = completion.choices[0].message.content.strip()
         print("GPT response:", response_text)
 
-        # === ELEVENLABS TTS ===
+        # ElevenLabs request
         tts_response = requests.post(
             f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
             headers={
@@ -32,7 +55,6 @@ def generate_response():
             print("TTS Error:", tts_response.status_code, tts_response.text)
             return jsonify({"error": "Voice generation failed"}), 500
 
-        # Save audio to static file
         audio_path = "static/lumina_response.mp3"
         with open(audio_path, "wb") as f:
             f.write(tts_response.content)
@@ -42,3 +64,6 @@ def generate_response():
     except Exception as e:
         print("❌ SERVER ERROR:", str(e))
         return jsonify({"error": "Server exception occurred"}), 500
+
+if __name__ == "__main__":
+    app.run(debug=True)
