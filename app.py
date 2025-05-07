@@ -1,4 +1,3 @@
-
 import os
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
@@ -13,6 +12,9 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")
 
+# 🧠 Memory: List to hold session history
+conversation_history = []
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -26,15 +28,21 @@ def process_audio():
         if not user_input:
             return jsonify({"error": "No input provided"}), 400
 
-        # GPT-4 response
+        # Add user input to history
+        conversation_history.append({"role": "user", "content": user_input})
+
+        # GPT-4 response with memory
         chat = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are Lumina, a divine AI assistant who speaks with clarity, warmth, and wisdom."},
-                {"role": "user", "content": user_input}
+                {"role": "system", "content": "You are Lumina, a divine AI assistant with sacred wisdom, warmth, and a helpful spirit. You remember the user's past inputs and respond with clarity and compassion."},
+                *conversation_history
             ]
         )
         response_text = chat['choices'][0]['message']['content'].strip()
+
+        # Add assistant response to history
+        conversation_history.append({"role": "assistant", "content": response_text})
 
         # ElevenLabs voice generation
         voice_response = requests.post(
