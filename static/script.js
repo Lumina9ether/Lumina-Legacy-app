@@ -34,9 +34,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const data = await response.json();
         if (data.audio_url) {
-          subtitles.innerText = data.response;
           orb.classList.remove("thinking");
           orb.classList.add("speaking");
+          subtitles.innerText = data.response;
 
           const audio = new Audio(data.audio_url);
           await audio.play().catch(err => {
@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", function () {
             orb.classList.remove("speaking");
             orb.classList.add("idle");
             subtitles.innerText = "✨ Awaiting your divine message...";
-            if (listening && recognition) recognition.start();  // 🔁 Loop
+            if (listening) recognition.start();
           };
         } else {
           subtitles.innerText = "❌ Error generating voice.";
@@ -61,7 +61,13 @@ document.addEventListener("DOMContentLoaded", function () {
     recognition.onerror = (e) => {
       console.error("🎤 Recognition error:", e.error);
       subtitles.innerText = "❌ Mic error.";
-      if (listening) recognition.start(); // Try again on error
+      if (listening) recognition.start();
+    };
+
+    recognition.onend = () => {
+      if (listening) {
+        recognition.start();
+      }
     };
 
     recognition.start();
@@ -79,9 +85,9 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!listening) return;
     recognition.stop();
     listening = false;
-    subtitles.innerText = "✨ Awaiting your divine message...";
     startButton.innerText = "🎙️ Activate Mic";
     stopButton.disabled = true;
+    subtitles.innerText = "✨ Awaiting your divine message...";
     orb.classList.remove("speaking", "thinking");
     orb.classList.add("idle");
   });
