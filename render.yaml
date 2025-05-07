@@ -1,9 +1,10 @@
 services:
   - type: web
-    name: lumina-legacy-app
+    name: lumina-app
     env: python
-    buildCommand: ""
-    startCommand: "gunicorn app:app"
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    autoDeploy: true
     envVars:
       - key: OPENAI_API_KEY
         sync: false
