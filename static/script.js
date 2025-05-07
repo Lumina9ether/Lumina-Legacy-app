@@ -1,77 +1,75 @@
-document.addEventListener('DOMContentLoaded', function () {
-    const micButton = document.getElementById('activate-mic');
-    const stopButton = document.getElementById('stop-button');
-    const orb = document.getElementById('orb');
-    const subtitle = document.getElementById('subtitle');
+// Speech recognition setup
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recognition = new SpeechRecognition();
+recognition.continuous = false;
+recognition.lang = "en-US";
+recognition.interimResults = false;
 
-    let recognition;
-    let isListening = false;
+// DOM elements
+const micButton = document.getElementById("activate-mic");
+const stopButton = document.getElementById("stop-button");
+const orb = document.getElementById("orb");
+const subtitles = document.getElementById("subtitle");
 
-    if (!('webkitSpeechRecognition' in window)) {
-        alert('Your browser does not support Speech Recognition.');
-        return;
-    }
+// Start listening
+function startListening() {
+  recognition.start();
+  micButton.disabled = true;
+  stopButton.disabled = false;
+  subtitles.innerText = "🎙️ Listening...";
+  orb.classList.add("glow");
+}
 
-    recognition = new webkitSpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = 'en-US';
+// Stop listening
+function stopListening() {
+  recognition.stop();
+  micButton.disabled = false;
+  stopButton.disabled = true;
+  orb.classList.remove("glow");
+  subtitles.innerText = "✨ Awaiting your divine message...";
+}
 
-    micButton.addEventListener('click', () => {
-        recognition.start();
-        isListening = true;
-        orb.classList.add('listening');
-        subtitle.innerHTML = '🎙️ Listening...';
-        micButton.disabled = true;
-        stopButton.disabled = false;
+// Process voice input
+recognition.onresult = async (event) => {
+  const transcript = event.results[0][0].transcript;
+  subtitles.innerText = `🗣️ You said: ${transcript}`;
+  await getResponse(transcript);
+};
+
+// Triggered when recognition ends
+recognition.onend = () => {
+  stopListening();
+};
+
+// API call to backend
+async function getResponse(message) {
+  try {
+    const response = await fetch("/generate-response", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message }),
     });
 
-    stopButton.addEventListener('click', () => {
-        recognition.stop();
-        isListening = false;
-        orb.classList.remove('listening');
-        subtitle.innerHTML = '✨ Awaiting your divine message...';
-        micButton.disabled = false;
-        stopButton.disabled = true;
-    });
+    if (!response.ok) throw new Error("Response not ok");
 
-    recognition.onresult = async (event) => {
-        const transcript = event.results[0][0].transcript;
-        subtitle.innerHTML = `🗣️ You said: ${transcript}`;
-        orb.classList.remove('listening');
-        micButton.disabled = false;
-        stopButton.disabled = true;
+    const data = await response.json();
+    subtitles.innerText = `💬 ${data.response}`;
+    playVoice(data.response);
+  } catch (error) {
+    subtitles.innerText = "⚠️ There was a problem.";
+    console.error("Error:", error);
+  }
+}
 
-        try {
-            const response = await fetch('/generate-response', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: transcript }),
-            });
+// Voice output using ElevenLabs
+function playVoice(text) {
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  utterance.voice = speechSynthesis.getVoices().find(voice => voice.name.includes("Google") || voice.default);
+  speechSynthesis.speak(utterance);
+}
 
-            const data = await response.json();
-            if (data && data.reply) {
-                speakResponse(data.reply);
-                subtitle.innerHTML = `💡 Lumina: ${data.reply}`;
-            } else {
-                subtitle.innerHTML = '⚠️ Lumina could not respond.';
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            subtitle.innerHTML = '⚠️ There was a problem.';
-        }
-    };
-
-    function speakResponse(text) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-US';
-        window.speechSynthesis.speak(utterance);
-    }
-
-    recognition.onerror = (event) => {
-        console.error('Speech recognition error', event);
-        subtitle.innerHTML = '⚠️ Mic error occurred.';
-        micButton.disabled = false;
-        stopButton.disabled = true;
-    };
-});
+// Event listeners
+micButton.addEventListener("click", startListening);
+stopButton.addEventListener("click", stopListening);
