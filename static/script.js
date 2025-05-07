@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
   let recognition;
   let listening = false;
 
-  const startListening = () => {
+  const initializeRecognition = () => {
     recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     recognition.lang = "en-US";
     recognition.interimResults = false;
@@ -39,6 +39,11 @@ document.addEventListener("DOMContentLoaded", function () {
           subtitles.innerText = data.response;
 
           const audio = new Audio(data.audio_url);
+
+          // Temporarily disable onend while audio is playing
+          recognition.onend = null;
+          recognition.onerror = null;
+
           await audio.play().catch(err => {
             console.error("🔇 Audio playback failed:", err);
           });
@@ -47,7 +52,11 @@ document.addEventListener("DOMContentLoaded", function () {
             orb.classList.remove("speaking");
             orb.classList.add("idle");
             subtitles.innerText = "✨ Awaiting your divine message...";
-            if (listening) recognition.start();
+
+            if (listening) {
+              initializeRecognition();
+              recognition.start();
+            }
           };
         } else {
           subtitles.innerText = "❌ Error generating voice.";
@@ -61,7 +70,6 @@ document.addEventListener("DOMContentLoaded", function () {
     recognition.onerror = (e) => {
       console.error("🎤 Recognition error:", e.error);
       subtitles.innerText = "❌ Mic error.";
-      if (listening) recognition.start();
     };
 
     recognition.onend = () => {
@@ -69,8 +77,6 @@ document.addEventListener("DOMContentLoaded", function () {
         recognition.start();
       }
     };
-
-    recognition.start();
   };
 
   startButton.addEventListener("click", () => {
@@ -78,7 +84,8 @@ document.addEventListener("DOMContentLoaded", function () {
     startButton.innerText = "🎙️ Listening...";
     stopButton.disabled = false;
     listening = true;
-    startListening();
+    initializeRecognition();
+    recognition.start();
   });
 
   stopButton.addEventListener("click", () => {
