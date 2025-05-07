@@ -13,9 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
   let recognition;
   let listening = false;
 
-  startButton.addEventListener("click", () => {
-    if (listening) return;
-
+  const startListening = () => {
     recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     recognition.lang = "en-US";
     recognition.interimResults = false;
@@ -49,6 +47,7 @@ document.addEventListener("DOMContentLoaded", function () {
             orb.classList.remove("speaking");
             orb.classList.add("idle");
             subtitles.innerText = "✨ Awaiting your divine message...";
+            if (listening && recognition) recognition.start();  // 🔁 Loop
           };
         } else {
           subtitles.innerText = "❌ Error generating voice.";
@@ -62,17 +61,22 @@ document.addEventListener("DOMContentLoaded", function () {
     recognition.onerror = (e) => {
       console.error("🎤 Recognition error:", e.error);
       subtitles.innerText = "❌ Mic error.";
+      if (listening) recognition.start(); // Try again on error
     };
 
     recognition.start();
-    listening = true;
+  };
+
+  startButton.addEventListener("click", () => {
+    if (listening) return;
     startButton.innerText = "🎙️ Listening...";
     stopButton.disabled = false;
+    listening = true;
+    startListening();
   });
 
   stopButton.addEventListener("click", () => {
     if (!listening) return;
-
     recognition.stop();
     listening = false;
     subtitles.innerText = "✨ Awaiting your divine message...";
