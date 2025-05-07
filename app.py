@@ -16,14 +16,14 @@ VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")
 def index():
     return render_template("index.html")
 
-@app.route("/generate-response", methods=["POST"])
-def generate_response():
+@app.route("/process-audio", methods=["POST"])
+def process_audio():
     try:
         data = request.get_json()
-        user_input = data.get("message", "")
+        user_input = data.get("input", "")
 
         if not user_input:
-            return jsonify({"error": "No message provided"}), 400
+            return jsonify({"error": "No input provided"}), 400
 
         # GPT-4 completion
         chat = openai.ChatCompletion.create(
