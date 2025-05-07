@@ -12,6 +12,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   let recognition;
   let listening = false;
+  let audio = null;
+  let stopRequested = false;
 
   const initializeRecognition = () => {
     recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -38,9 +40,9 @@ document.addEventListener("DOMContentLoaded", function () {
           orb.classList.add("speaking");
           subtitles.innerText = data.response;
 
-          const audio = new Audio(data.audio_url);
+          audio = new Audio(data.audio_url);
 
-          // Temporarily disable onend while audio is playing
+          // Temporarily disable recognition
           recognition.onend = null;
           recognition.onerror = null;
 
@@ -53,7 +55,7 @@ document.addEventListener("DOMContentLoaded", function () {
             orb.classList.add("idle");
             subtitles.innerText = "✨ Awaiting your divine message...";
 
-            if (listening) {
+            if (listening && !stopRequested) {
               initializeRecognition();
               recognition.start();
             }
@@ -69,11 +71,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
     recognition.onerror = (e) => {
       console.error("🎤 Recognition error:", e.error);
-      subtitles.innerText = "❌ Mic error.";
+      if (e.error === "no-speech") {
+        subtitles.innerText = "😶 I didn’t catch that. Try again.";
+        orb.classList.add("idle");
+        if (listening && !stopRequested) {
+          recognition.start();
+        }
+      } else {
+        subtitles.innerText = "❌ Mic error occurred.";
+      }
     };
 
     recognition.onend = () => {
-      if (listening) {
+      if (listening && !stopRequested) {
         recognition.start();
       }
     };
@@ -84,14 +94,20 @@ document.addEventListener("DOMContentLoaded", function () {
     startButton.innerText = "🎙️ Listening...";
     stopButton.disabled = false;
     listening = true;
+    stopRequested = false;
     initializeRecognition();
     recognition.start();
   });
 
   stopButton.addEventListener("click", () => {
     if (!listening) return;
-    recognition.stop();
+    stopRequested = true;
     listening = false;
+    recognition.stop();
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
     startButton.innerText = "🎙️ Activate Mic";
     stopButton.disabled = true;
     subtitles.innerText = "✨ Awaiting your divine message...";
