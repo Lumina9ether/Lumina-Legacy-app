@@ -3,16 +3,17 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
 import openai
 import requests
+import traceback
 
 app = Flask(__name__)
 CORS(app)
 
-# API Keys from environment
+# Set API Keys
 openai.api_key = os.getenv("OPENAI_API_KEY")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")
 
-# 🧠 Memory: List to hold session history
+# Memory container
 conversation_history = []
 
 @app.route("/")
@@ -23,28 +24,34 @@ def index():
 def process_audio():
     try:
         data = request.get_json()
-        user_input = data.get("input", "")
+        user_input = data.get("input", "").strip()
 
         if not user_input:
             return jsonify({"error": "No input provided"}), 400
 
-        # Add user input to history
+        # Append user input to memory
         conversation_history.append({"role": "user", "content": user_input})
 
-        # GPT-4 response with memory
+        # Limit memory to last 16 turns
+        if len(conversation_history) > 16:
+            conversation_history[:] = conversation_history[-16:]
+
+        # Add system role instruction (always stays at the top)
+        conversation = [{"role": "system", "content": "You are Lumina, a divine AI guide who speaks with cosmic grace."}]
+        conversation.extend(conversation_history)
+
+        # Call OpenAI
         chat = openai.ChatCompletion.create(
             model="gpt-4",
-            messages=[
-                {"role": "system", "content": "You are Lumina, a divine AI assistant with sacred wisdom, warmth, and a helpful spirit. You remember the user's past inputs and respond with clarity and compassion."},
-                *conversation_history
-            ]
+            messages=conversation
         )
+
         response_text = chat['choices'][0]['message']['content'].strip()
 
-        # Add assistant response to history
+        # Save AI response to memory
         conversation_history.append({"role": "assistant", "content": response_text})
 
-        # ElevenLabs voice generation
+        # Send to ElevenLabs
         voice_response = requests.post(
             f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}",
             headers={
@@ -66,7 +73,6 @@ def process_audio():
                 "details": voice_response.text
             }), 500
 
-        # Save MP3
         audio_path = "static/lumina_response.mp3"
         with open(audio_path, "wb") as f:
             f.write(voice_response.content)
@@ -77,8 +83,9 @@ def process_audio():
         })
 
     except Exception as e:
-        print("🔥 ERROR:", e)
-        return jsonify({"error": str(e)}), 500
+        print("🔥 BACKEND ERROR:", e)
+        traceback.print_exc()
+        return jsonify({"error": "Server error", "details": str(e)}), 500
 
 @app.route("/static/<path:path>")
 def serve_static(path):
