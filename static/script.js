@@ -12,14 +12,39 @@ document.addEventListener("DOMContentLoaded", function () {
 
   let recognition;
   let listening = false;
-  let audio = null;
+  let recognizing = false;
   let stopRequested = false;
+  let audio = null;
 
   const initializeRecognition = () => {
     recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     recognition.lang = "en-US";
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      recognizing = true;
+    };
+
+    recognition.onend = () => {
+      recognizing = false;
+      if (listening && !stopRequested) {
+        recognition.start();
+      }
+    };
+
+    recognition.onerror = (e) => {
+      console.error("🎤 Recognition error:", e.error);
+      if (e.error === "no-speech") {
+        subtitles.innerText = "😶 I didn’t catch that. Try again.";
+        orb.classList.add("idle");
+        if (listening && !stopRequested && !recognizing) {
+          recognition.start();
+        }
+      } else {
+        subtitles.innerText = "❌ Mic error occurred.";
+      }
+    };
 
     recognition.onresult = async (event) => {
       const transcript = event.results[0][0].transcript;
@@ -34,17 +59,25 @@ document.addEventListener("DOMContentLoaded", function () {
           body: JSON.stringify({ input: transcript })
         });
 
-        const data = await response.json();
+        const text = await response.text();
+        let data = {};
+
+        try {
+          data = JSON.parse(text);
+        } catch (err) {
+          console.error("❌ Invalid JSON response:", text);
+          subtitles.innerText = "⚠️ Server error.";
+          return;
+        }
+
         if (data.audio_url) {
           orb.classList.remove("thinking");
           orb.classList.add("speaking");
           subtitles.innerText = data.response;
 
           audio = new Audio(data.audio_url);
-
-          // Temporarily disable recognition
-          recognition.onend = null;
-          recognition.onerror = null;
+          recognition.abort();  // stop mic during speech
+          recognizing = false;
 
           await audio.play().catch(err => {
             console.error("🔇 Audio playback failed:", err);
@@ -54,9 +87,7 @@ document.addEventListener("DOMContentLoaded", function () {
             orb.classList.remove("speaking");
             orb.classList.add("idle");
             subtitles.innerText = "✨ Awaiting your divine message...";
-
             if (listening && !stopRequested) {
-              initializeRecognition();
               recognition.start();
             }
           };
@@ -64,27 +95,8 @@ document.addEventListener("DOMContentLoaded", function () {
           subtitles.innerText = "❌ Error generating voice.";
         }
       } catch (err) {
-        console.error(err);
+        console.error("⚠️ Fetch error:", err);
         subtitles.innerText = "⚠️ An error occurred.";
-      }
-    };
-
-    recognition.onerror = (e) => {
-      console.error("🎤 Recognition error:", e.error);
-      if (e.error === "no-speech") {
-        subtitles.innerText = "😶 I didn’t catch that. Try again.";
-        orb.classList.add("idle");
-        if (listening && !stopRequested) {
-          recognition.start();
-        }
-      } else {
-        subtitles.innerText = "❌ Mic error occurred.";
-      }
-    };
-
-    recognition.onend = () => {
-      if (listening && !stopRequested) {
-        recognition.start();
       }
     };
   };
@@ -103,7 +115,10 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!listening) return;
     stopRequested = true;
     listening = false;
-    recognition.stop();
+    if (recognizing) {
+      recognition.abort();
+      recognizing = false;
+    }
     if (audio) {
       audio.pause();
       audio.currentTime = 0;
