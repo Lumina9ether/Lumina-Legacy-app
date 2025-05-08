@@ -3,6 +3,11 @@ document.addEventListener("DOMContentLoaded", function () {
   const stopButton = document.getElementById("stop-button");
   const orb = document.getElementById("orb");
   const subtitles = document.getElementById("subtitles");
+  const activateButton = document.getElementById("activate-mic");
+
+  if (activateButton) {
+    activateButton.style.display = "none";
+  }
 
   if (!stopButton || !orb || !subtitles) {
     console.error("🚫 Missing essential DOM elements.");
@@ -21,6 +26,7 @@ document.addEventListener("DOMContentLoaded", function () {
     recognition.lang = "en-US";
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
+    recognition.continuous = false;
 
     recognition.onstart = () => {
       recognizing = true;
@@ -28,21 +34,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
     recognition.onend = () => {
       recognizing = false;
-      if (isSummoned && listening && !stopRequested) {
-        recognition.start();
+      if (!stopRequested) {
+        recognition.start();  // Keep listening for "Lumina Awaken"
       }
     };
 
     recognition.onerror = (e) => {
       console.error("🎤 Recognition error:", e.error);
       if (e.error === "no-speech") {
-        subtitles.innerText = "😶 I didn’t catch that. Try again.";
-        orb.classList.add("idle");
-        if (isSummoned && listening && !stopRequested && !recognizing) {
-          recognition.start();
-        }
-      } else {
-        subtitles.innerText = "❌ Mic error occurred.";
+        if (!stopRequested && !recognizing) recognition.start();
       }
     };
 
@@ -50,17 +50,14 @@ document.addEventListener("DOMContentLoaded", function () {
       const transcript = event.results[0][0].transcript.trim();
       console.log("User said:", transcript);
 
-      // Summon trigger
       if (!isSummoned && transcript.toLowerCase().includes("lumina awaken")) {
         isSummoned = true;
         listening = true;
         subtitles.innerText = "🌌 I am here...";
         orb.classList.add("idle");
-        recognition.start();
         return;
       }
 
-      // Skip if not summoned
       if (!isSummoned || stopRequested) return;
 
       subtitles.innerText = "🧠 Thinking...";
@@ -102,7 +99,6 @@ document.addEventListener("DOMContentLoaded", function () {
             if (stopRequested) return;
             orb.classList.remove("speaking");
             orb.classList.add("idle");
-            // mic will not restart automatically — requires re-summon
             isSummoned = false;
             listening = false;
           };
@@ -116,7 +112,6 @@ document.addEventListener("DOMContentLoaded", function () {
     };
   };
 
-  // Stop button fully shuts down voice and keeps subtitle
   stopButton.addEventListener("click", () => {
     stopRequested = true;
     listening = false;
@@ -138,7 +133,7 @@ document.addEventListener("DOMContentLoaded", function () {
     subtitles.innerText += " 💬";
   });
 
-  // Begin listening for summon passively
+  // Start always-on listener
   initializeRecognition();
   recognition.start();
 });
