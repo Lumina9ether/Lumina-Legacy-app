@@ -1,91 +1,60 @@
 import os
-from flask import Flask, render_template, request, jsonify, send_from_directory
-from flask_cors import CORS
-import openai
-import requests
 import traceback
+from flask import Flask, request, jsonify, render_template
+from elevenlabs import generate, save, set_api_key
+from tempfile import NamedTemporaryFile
+import openai
 
 app = Flask(__name__)
-CORS(app)
 
-# Load API keys
+# Set your API keys from environment variables
 openai.api_key = os.getenv("OPENAI_API_KEY")
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+set_api_key(os.getenv("ELEVENLABS_API_KEY"))
 VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")
 
-# Memory buffer
-conversation_history = []
+conversation_memory = []
 
 @app.route("/")
-def index():
+def home():
     return render_template("index.html")
 
 @app.route("/process-audio", methods=["POST"])
 def process_audio():
     try:
         data = request.get_json()
-        user_input = data.get("input", "").strip()
+        user_message = data.get("message", "")
 
-        if not user_input:
-            return jsonify({"error": "No input provided"}), 400
+        if not user_message:
+            return jsonify({"error": "No message received"}), 400
 
-        # Update memory
-        conversation_history.append({"role": "user", "content": user_input})
-        if len(conversation_history) > 6:
-            conversation_history.pop(0)
+        conversation_memory.append({"role": "user", "content": user_message})
 
-        # GPT Response
-        response = openai.ChatCompletion.create(
+        # Use OpenAI's current model interface
+        completion = openai.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are Lumina, a divine, warm, cosmic AI guide here to serve with grace and clarity."},
-                *conversation_history
-            ]
+                {"role": "system", "content": "You are Lumina, a divine, helpful, high-vibration AI assistant."}
+            ] + conversation_memory,
         )
-        reply = response.choices[0].message["content"].strip()
-        conversation_history.append({"role": "assistant", "content": reply})
 
-        # Attempt voice synthesis
-        try:
-            voice_response = requests.post(
-                f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}",
-                headers={
-                    "xi-api-key": ELEVENLABS_API_KEY,
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "text": reply,
-                    "voice_settings": {
-                        "stability": 0.5,
-                        "similarity_boost": 0.75
-                    }
-                }
-            )
+        response_text = completion.choices[0].message.content.strip()
+        conversation_memory.append({"role": "assistant", "content": response_text})
 
-            voice_response.raise_for_status()
+        # Generate voice
+        audio = generate(text=response_text, voice=VOICE_ID, model="eleven_multilingual_v2")
 
-            with open("static/lumina_response.mp3", "wb") as f:
-                f.write(voice_response.content)
+        with NamedTemporaryFile(delete=False, suffix=".mp3", dir="static") as f:
+            save(audio, f.name)
+            audio_filename = os.path.basename(f.name)
 
-            return jsonify({
-                "response": reply,
-                "audio_url": "/static/lumina_response.mp3"
-            })
-
-        except Exception as voice_error:
-            print("🛑 ElevenLabs failed:", voice_error)
-            return jsonify({
-                "response": f"{reply}\n\n(⚠️ My voice is temporarily offline, but I’m still here with you.)",
-                "audio_url": ""
-            })
+        return jsonify({
+            "response": response_text,
+            "audio_url": f"/static/{audio_filename}"
+        })
 
     except Exception as e:
-        print("🔥 Full traceback:\n", traceback.format_exc())
+        traceback.print_exc()
         return jsonify({"error": "Internal Server Error"}), 500
-
-@app.route("/static/<path:path>")
-def serve_static(path):
-    return send_from_directory("static", path)
 
 if __name__ == "__main__":
     app.run(debug=True)
