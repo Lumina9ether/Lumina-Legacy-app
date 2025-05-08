@@ -8,12 +8,12 @@ import traceback
 app = Flask(__name__)
 CORS(app)
 
-# Load environment variables
+# Load API keys
 openai.api_key = os.getenv("OPENAI_API_KEY")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")
 
-# Chat memory
+# Memory buffer
 conversation_history = []
 
 @app.route("/")
@@ -27,65 +27,61 @@ def process_audio():
         user_input = data.get("input", "").strip()
 
         if not user_input:
-            return jsonify({"error": "No input received"}), 400
+            return jsonify({"error": "No input provided"}), 400
 
+        # Update memory
         conversation_history.append({"role": "user", "content": user_input})
-
-        # Trim memory to last 6 messages
         if len(conversation_history) > 6:
             conversation_history.pop(0)
 
-        # Get AI response
-        chat_response = openai.ChatCompletion.create(
+        # GPT Response
+        response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are Lumina, a warm cosmic AI with divine insight and a soothing voice."},
+                {"role": "system", "content": "You are Lumina, a divine, warm, cosmic AI guide here to serve with grace and clarity."},
                 *conversation_history
             ]
         )
-        ai_message = chat_response.choices[0].message["content"].strip()
-        conversation_history.append({"role": "assistant", "content": ai_message})
+        reply = response.choices[0].message["content"].strip()
+        conversation_history.append({"role": "assistant", "content": reply})
 
-        # ElevenLabs voice synthesis
-        voice_response = requests.post(
-            f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}",
-            headers={
-                "xi-api-key": ELEVENLABS_API_KEY,
-                "Content-Type": "application/json"
-            },
-            json={
-                "text": ai_message,
-                "voice_settings": {
-                    "stability": 0.5,
-                    "similarity_boost": 0.75
+        # Attempt voice synthesis
+        try:
+            voice_response = requests.post(
+                f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}",
+                headers={
+                    "xi-api-key": ELEVENLABS_API_KEY,
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "text": reply,
+                    "voice_settings": {
+                        "stability": 0.5,
+                        "similarity_boost": 0.75
+                    }
                 }
-            }
-        )
+            )
 
-        if voice_response.status_code == 200:
+            voice_response.raise_for_status()
+
             with open("static/lumina_response.mp3", "wb") as f:
                 f.write(voice_response.content)
 
             return jsonify({
-                "response": ai_message,
+                "response": reply,
                 "audio_url": "/static/lumina_response.mp3"
             })
 
-        else:
-            print("🔴 ElevenLabs voice generation failed:", voice_response.status_code)
-            print("Details:", voice_response.text)
-
+        except Exception as voice_error:
+            print("🛑 ElevenLabs failed:", voice_error)
             return jsonify({
-                "response": "I'm here, but my voice is temporarily unavailable. Please continue, I’m still listening.",
+                "response": f"{reply}\n\n(⚠️ My voice is temporarily offline, but I’m still here with you.)",
                 "audio_url": ""
             })
 
     except Exception as e:
-        print("⚠️ Server error:\n", traceback.format_exc())
-        return jsonify({
-            "error": "Internal Server Error",
-            "details": str(e)
-        }), 500
+        print("🔥 Full traceback:\n", traceback.format_exc())
+        return jsonify({"error": "Internal Server Error"}), 500
 
 @app.route("/static/<path:path>")
 def serve_static(path):
