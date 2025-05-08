@@ -1,143 +1,136 @@
-document.addEventListener("DOMContentLoaded", function () {
-  const stopButton = document.getElementById("stop-button");
-  const orb = document.getElementById("orb");
-  const subtitles = document.getElementById("subtitles");
-  const activateButton = document.getElementById("activate-mic");
+const micButton = document.getElementById("micButton");
+const stopButton = document.getElementById("stopButton");
+const statusText = document.getElementById("statusText");
+const orb = document.getElementById("orb");
+const audioElement = new Audio();
+let recognition;
+let isListening = false;
+let isSpeaking = false;
+let memory = [];
 
-  if (activateButton) {
-    activateButton.style.display = "none";
+let audioUnlocked = false;
+document.addEventListener('click', () => {
+  if (!audioUnlocked) {
+    const dummyAudio = new Audio();
+    dummyAudio.play().catch(() => {});
+    audioUnlocked = true;
+    console.log("🔊 Audio unlocked by user interaction.");
   }
+});
 
-  if (!stopButton || !orb || !subtitles) {
-    console.error("🚫 Missing essential DOM elements.");
-    return;
-  }
-
-  // Unlock audio autoplay
-  document.body.addEventListener("click", () => {
-    const unlockAudio = new Audio();
-    unlockAudio.play().catch(() => {});
-  }, { once: true });
-
-  let recognition;
-  let listening = false;
-  let recognizing = false;
-  let stopRequested = false;
-  let audio = null;
-  let isSummoned = false;
-
-  const initializeRecognition = () => {
-    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = "en-US";
+function startListening() {
+  if (!recognition) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
     recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    recognition.continuous = false;
+    recognition.lang = "en-US";
 
     recognition.onstart = () => {
-      recognizing = true;
-    };
-
-    recognition.onend = () => {
-      recognizing = false;
-      if (!stopRequested) {
-        recognition.start();
-      }
-    };
-
-    recognition.onerror = (e) => {
-      console.error("🎤 Recognition error:", e.error);
-      if (e.error === "no-speech") {
-        if (!stopRequested && !recognizing) recognition.start();
-      }
+      isListening = true;
+      statusText.innerText = "🎙️ Listening...";
+      micButton.disabled = true;
+      stopButton.disabled = false;
     };
 
     recognition.onresult = async (event) => {
-      const transcript = event.results[0][0].transcript.trim();
+      const transcript = event.results[event.resultIndex][0].transcript.trim();
       console.log("User said:", transcript);
 
-      if (!isSummoned && transcript.toLowerCase().includes("lumina awaken")) {
-        isSummoned = true;
-        listening = true;
-        subtitles.innerText = "🌌 I am here...";
-        orb.classList.add("idle");
+      if (transcript.toLowerCase().includes("lumina awaken")) {
+        console.log("🌀 Voice command detected: Lumina Awaken");
+        isListening = true;
+        statusText.innerText = "🌌 Awakened. Awaiting your divine message...";
         return;
       }
 
-      if (!isSummoned || stopRequested) return;
-
-      subtitles.innerText = "🧠 Thinking...";
-      orb.classList.remove("idle");
-      orb.classList.add("thinking");
-
-      try {
-        const response = await fetch("/process-audio", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ input: transcript })
-        });
-
-        const text = await response.text();
-        let data = {};
-
-        try {
-          data = JSON.parse(text);
-        } catch (err) {
-          console.error("❌ Invalid JSON response:", text);
-          subtitles.innerText = "⚠️ Server error.";
-          return;
-        }
-
-        if (data.audio_url) {
-          orb.classList.remove("thinking");
-          orb.classList.add("speaking");
-          subtitles.innerText = data.response;
-
-          audio = new Audio(data.audio_url);
-          recognition.abort();
-          recognizing = false;
-
-          await audio.play().catch(err => {
-            console.error("🔇 Audio playback failed:", err);
-          });
-
-          audio.onended = () => {
-            if (stopRequested) return;
-            orb.classList.remove("speaking");
-            orb.classList.add("idle");
-            isSummoned = false;
-            listening = false;
-          };
-        } else {
-          subtitles.innerText = "❌ Error generating voice.";
-        }
-      } catch (err) {
-        console.error("⚠️ Fetch error:", err);
-        subtitles.innerText = "⚠️ An error occurred.";
+      if (!isSpeaking && isListening) {
+        recognition.stop(); // temporarily stop listening to prevent overlap
+        await handleUserInput(transcript);
       }
     };
-  };
 
-  stopButton.addEventListener("click", () => {
-    stopRequested = true;
-    listening = false;
-    isSummoned = false;
+    recognition.onerror = (event) => {
+      console.error("🎤 Recognition error:", event.error);
+      if (event.error === "no-speech" || event.error === "aborted") {
+        statusText.innerText = "😶 I didn’t catch that. Try again.";
+        isListening = false;
+        micButton.disabled = false;
+      }
+    };
 
-    if (recognizing) {
-      recognition.abort();
-      recognizing = false;
-    }
+    recognition.onend = () => {
+      if (isListening && !isSpeaking) {
+        recognition.start(); // restart listening
+      }
+    };
+  }
 
-    if (audio) {
-      audio.pause();
-      audio.currentTime = 0;
-    }
-
-    stopButton.disabled = true;
-    orb.classList.remove("speaking", "thinking");
-    orb.classList.add("idle");
-    subtitles.innerText += " 💬";
-  });
-
-  initializeRecognition();
   recognition.start();
+}
+
+async function handleUserInput(text) {
+  isSpeaking = true;
+  orb.classList.add("thinking");
+  statusText.innerText = "🧠 Thinking...";
+
+  try {
+    memory.push({ role: "user", content: text });
+
+    const response = await fetch("/process-audio", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text, memory })
+    });
+
+    if (!response.ok) {
+      throw new Error("Server error: " + response.statusText);
+    }
+
+    const data = await response.json();
+    memory.push({ role: "assistant", content: data.response });
+
+    statusText.innerText = data.response;
+    audioElement.src = data.audio_url;
+
+    await audioElement.play();
+    console.log("🔊 Playing voice response...");
+
+    audioElement.onended = () => {
+      isSpeaking = false;
+      orb.classList.remove("thinking");
+
+      if (isListening) {
+        recognition.start(); // restart after speaking ends
+      }
+    };
+
+  } catch (error) {
+    console.error("❌ Error handling input:", error);
+    statusText.innerText = "❌ Error generating voice.";
+    isSpeaking = false;
+    orb.classList.remove("thinking");
+  }
+}
+
+stopButton.addEventListener("click", () => {
+  if (recognition && isListening) {
+    recognition.stop();
+  }
+  isListening = false;
+  isSpeaking = false;
+  micButton.disabled = false;
+  stopButton.disabled = true;
+  audioElement.pause();
+  audioElement.currentTime = 0;
+  orb.classList.remove("thinking");
+  console.log("🛑 Stopped all activity.");
 });
+
+// Automatically listen after voice activation
+window.onload = () => {
+  micButton.disabled = false;
+  stopButton.disabled = true;
+  statusText.innerText = "✨ Awaiting your divine message...";
+  startListening();
+};
