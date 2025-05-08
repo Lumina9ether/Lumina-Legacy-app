@@ -1,6 +1,15 @@
 services:
   - type: web
     name: lumina-legacy-app
-    env: python
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn wsgi:app"
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 1 -b 0.0.0.0:10000 wsgi:app
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        sync: false
+    plan: free
+    autoDeploy: true
