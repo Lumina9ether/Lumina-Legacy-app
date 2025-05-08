@@ -14,6 +14,12 @@ document.addEventListener("DOMContentLoaded", function () {
     return;
   }
 
+  // Unlock audio autoplay
+  document.body.addEventListener("click", () => {
+    const unlockAudio = new Audio();
+    unlockAudio.play().catch(() => {});
+  }, { once: true });
+
   let recognition;
   let listening = false;
   let recognizing = false;
@@ -35,7 +41,7 @@ document.addEventListener("DOMContentLoaded", function () {
     recognition.onend = () => {
       recognizing = false;
       if (!stopRequested) {
-        recognition.start();  // Keep listening for "Lumina Awaken"
+        recognition.start();
       }
     };
 
@@ -133,7 +139,6 @@ document.addEventListener("DOMContentLoaded", function () {
     subtitles.innerText += " 💬";
   });
 
-  // Start always-on listener
   initializeRecognition();
   recognition.start();
 });
