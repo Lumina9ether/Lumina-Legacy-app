@@ -84,6 +84,7 @@ document.addEventListener("DOMContentLoaded", function () {
           });
 
           audio.onended = () => {
+            if (stopRequested) return;
             orb.classList.remove("speaking");
             orb.classList.add("idle");
             subtitles.innerText = "✨ Awaiting your divine message...";
