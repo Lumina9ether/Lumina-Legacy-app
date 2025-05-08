@@ -1,4 +1,3 @@
-
 document.addEventListener("DOMContentLoaded", function () {
   const stopButton = document.getElementById("stop-button");
   const orb = document.getElementById("orb");
