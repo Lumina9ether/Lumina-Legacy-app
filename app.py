@@ -8,12 +8,12 @@ import traceback
 app = Flask(__name__)
 CORS(app)
 
-# Set API Keys
+# Load environment variables
 openai.api_key = os.getenv("OPENAI_API_KEY")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")
 
-# Memory container
+# Chat memory
 conversation_history = []
 
 @app.route("/")
@@ -27,31 +27,26 @@ def process_audio():
         user_input = data.get("input", "").strip()
 
         if not user_input:
-            return jsonify({"error": "No input provided"}), 400
+            return jsonify({"error": "No input received"}), 400
 
-        # Append user input to memory
         conversation_history.append({"role": "user", "content": user_input})
 
-        # Limit memory to last 16 turns
-        if len(conversation_history) > 16:
-            conversation_history[:] = conversation_history[-16:]
+        # Trim memory to last 6 messages
+        if len(conversation_history) > 6:
+            conversation_history.pop(0)
 
-        # Add system role instruction (always stays at the top)
-        conversation = [{"role": "system", "content": "You are Lumina, a divine AI guide who speaks with cosmic grace."}]
-        conversation.extend(conversation_history)
-
-        # Call OpenAI
-        chat = openai.ChatCompletion.create(
+        # Get AI response
+        chat_response = openai.ChatCompletion.create(
             model="gpt-4",
-            messages=conversation
+            messages=[
+                {"role": "system", "content": "You are Lumina, a warm cosmic AI with divine insight and a soothing voice."},
+                *conversation_history
+            ]
         )
+        ai_message = chat_response.choices[0].message["content"].strip()
+        conversation_history.append({"role": "assistant", "content": ai_message})
 
-        response_text = chat['choices'][0]['message']['content'].strip()
-
-        # Save AI response to memory
-        conversation_history.append({"role": "assistant", "content": response_text})
-
-        # Send to ElevenLabs
+        # ElevenLabs voice synthesis
         voice_response = requests.post(
             f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}",
             headers={
@@ -59,7 +54,7 @@ def process_audio():
                 "Content-Type": "application/json"
             },
             json={
-                "text": response_text,
+                "text": ai_message,
                 "voice_settings": {
                     "stability": 0.5,
                     "similarity_boost": 0.75
@@ -67,25 +62,30 @@ def process_audio():
             }
         )
 
-        if voice_response.status_code != 200:
+        if voice_response.status_code == 200:
+            with open("static/lumina_response.mp3", "wb") as f:
+                f.write(voice_response.content)
+
             return jsonify({
-                "error": "Voice generation failed",
-                "details": voice_response.text
-            }), 500
+                "response": ai_message,
+                "audio_url": "/static/lumina_response.mp3"
+            })
 
-        audio_path = "static/lumina_response.mp3"
-        with open(audio_path, "wb") as f:
-            f.write(voice_response.content)
+        else:
+            print("🔴 ElevenLabs voice generation failed:", voice_response.status_code)
+            print("Details:", voice_response.text)
 
-        return jsonify({
-            "response": response_text,
-            "audio_url": f"/{audio_path}"
-        })
+            return jsonify({
+                "response": "I'm here, but my voice is temporarily unavailable. Please continue, I’m still listening.",
+                "audio_url": ""
+            })
 
     except Exception as e:
-        print("🔥 BACKEND ERROR:", e)
-        traceback.print_exc()
-        return jsonify({"error": "Server error", "details": str(e)}), 500
+        print("⚠️ Server error:\n", traceback.format_exc())
+        return jsonify({
+            "error": "Internal Server Error",
+            "details": str(e)
+        }), 500
 
 @app.route("/static/<path:path>")
 def serve_static(path):
