@@ -1,77 +1,102 @@
 let recognition;
-let micActive = false;
-let stopButton = document.getElementById("stop-button");
-let activateButton = document.getElementById("activate-button");
-let orb = document.getElementById("orb");
-let subtitle = document.getElementById("subtitle");
+let isListening = false;
+let isSpeaking = false;
 
-// Initialize mic
-function initializeRecognition() {
-    window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new window.SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.continuous = false;
-    recognition.interimResults = false;
+const startBtn = document.getElementById('start-btn');
+const stopBtn = document.getElementById('stop-btn');
+const orb = document.getElementById('orb');
+const responseText = document.getElementById('response');
+const audioElement = document.getElementById('lumina-voice');
+const voiceSource = document.getElementById('voice-source');
 
-    recognition.onresult = function (event) {
-        const transcript = event.results[0][0].transcript.trim();
-        console.log("User said:", transcript);
-        subtitle.innerText = transcript;
+// Set up speech recognition
+window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-        if (transcript.toLowerCase().includes("lumina awaken")) {
-            subtitle.innerText = "✨ Lumina has awakened.";
-            callLumina("Hello, how can I serve your divine purpose today?");
-        } else {
-            callLumina(transcript);
-        }
-    };
+if (window.SpeechRecognition) {
+  recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = false;
 
-    recognition.onerror = function (e) {
-        console.error("Recognition error:", e.error);
-        subtitle.innerText = "😔 I didn’t catch that. Try again.";
-    };
+  recognition.onstart = () => {
+    isListening = true;
+    orb.classList.remove('idle');
+    orb.classList.add('listening');
+    responseText.textContent = '🎤 Listening...';
+  };
 
-    recognition.onend = () => {
-        if (micActive) recognition.start(); // Restart only if mic is still active
-    };
+  recognition.onend = () => {
+    isListening = false;
+    if (!isSpeaking) {
+      orb.classList.remove('listening');
+      orb.classList.add('idle');
+      responseText.textContent = '✨ Awaiting your divine message...';
+    }
+  };
+
+  recognition.onerror = (event) => {
+    console.error("Recognition error:", event.error);
+    responseText.textContent = "⚠️ Mic error occurred.";
+    orb.classList.remove('listening');
+    orb.classList.add('idle');
+  };
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript.trim();
+    console.log("User said:", transcript);
+    responseText.textContent = `🧠 "${transcript}"`;
+    sendTranscript(transcript);
+  };
+
+  startBtn.addEventListener('click', () => {
+    if (!isListening) recognition.start();
+  });
+
+  stopBtn.addEventListener('click', () => {
+    if (isListening) recognition.stop();
+    if (isSpeaking) {
+      audioElement.pause();
+      isSpeaking = false;
+    }
+    responseText.textContent = "✨ Awaiting your divine message...";
+    orb.classList.remove('thinking', 'listening');
+    orb.classList.add('idle');
+  });
+
+} else {
+  alert('SpeechRecognition is not supported in your browser.');
 }
 
-// Voice output
-function callLumina(text) {
-    orb.classList.add("thinking");
-    fetch("/process-audio", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text })
-    })
-    .then(res => {
-        if (!res.ok) throw new Error("Server error");
-        return res.blob();
-    })
-    .then(blob => {
-        const audio = new Audio(URL.createObjectURL(blob));
-        audio.play();
-        subtitle.innerText = text;
-        orb.classList.remove("thinking");
-    })
-    .catch(err => {
-        console.error("Voice generation error:", err);
-        subtitle.innerText = "❌ Error generating voice.";
-        orb.classList.remove("thinking");
-    });
+function sendTranscript(transcript) {
+  orb.classList.remove('idle');
+  orb.classList.add('thinking');
+  responseText.textContent = "🧠 Thinking...";
+
+  fetch('/process-audio', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: transcript })
+  })
+  .then(res => res.ok ? res.blob() : Promise.reject(res))
+  .then(blob => {
+    const audioURL = URL.createObjectURL(blob);
+    voiceSource.src = audioURL;
+    audioElement.load();
+    audioElement.play();
+    isSpeaking = true;
+
+    audioElement.onended = () => {
+      isSpeaking = false;
+      orb.classList.remove('thinking');
+      orb.classList.add('idle');
+      if (!isListening) {
+        responseText.textContent = '✨ Awaiting your divine message...';
+      }
+    };
+  })
+  .catch(err => {
+    console.error("Voice generation error:", err);
+    responseText.textContent = "❌ Error generating voice.";
+    orb.classList.remove('thinking');
+    orb.classList.add('idle');
+  });
 }
-
-// Event listeners
-activateButton.addEventListener("click", () => {
-    micActive = true;
-    activateButton.innerText = "🎙 Listening...";
-    initializeRecognition();
-    recognition.start();
-});
-
-stopButton.addEventListener("click", () => {
-    micActive = false;
-    recognition.stop();
-    activateButton.innerText = "🎙 Activate Mic";
-    subtitle.innerText = "🛑 Mic turned off.";
-});
