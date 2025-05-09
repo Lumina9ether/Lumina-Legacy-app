@@ -3,24 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lumina Legacy LLC</title>
+  <title>Lumina Legacy</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
+  <canvas id="stars"></canvas>
+
   <div class="container">
     <h1>Lumina Legacy LLC</h1>
     <p class="subtitle">Your Divine Digital AI Assistant</p>
-    <p class="instruction">Speak to Lumina and let your vision unfold. Activate the mic below to begin.</p>
+    <p class="description">Speak to Lumina and let your vision unfold. Activate the mic below to begin.</p>
 
-    <div class="controls">
-      <button id="activate-button" class="mic">🎙 Activate Mic</button>
-      <button id="stop-button" class="stop">🛑 Stop Talking</button>
+    <div class="buttons">
+      <button id="start-btn">🎙️ Activate Mic</button>
+      <button id="stop-btn" class="stop">🔴 Stop Talking</button>
     </div>
 
-    <div id="orb" class="orb"></div>
-    <div id="subtitle" class="subtitle-display">✨ Awaiting your divine message...</div>
+    <div class="orb-container">
+      <div id="orb" class="orb idle"></div>
+      <p id="response" class="subtitle-line">✨ Awaiting your divine message...</p>
+    </div>
   </div>
 
+  <audio id="lumina-voice" preload="auto">
+    <source id="voice-source" src="" type="audio/mpeg" />
+    Your browser does not support the audio element.
+  </audio>
+
+  <script src="/static/stars.js"></script>
   <script src="/static/script.js"></script>
 </body>
 </html>
