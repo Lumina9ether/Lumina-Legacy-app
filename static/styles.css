@@ -1,113 +1,125 @@
-body {
-  margin: 0;
-  padding: 0;
-  font-family: "Helvetica Neue", sans-serif;
-  background: black;
-  color: white;
-  overflow: hidden;
+/* Global Styles */
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: 'Arial', sans-serif;
+    background: black;
+    color: white;
+    overflow: hidden;
+    position: relative;
 }
 
+/* Stars canvas */
+canvas#stars {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+}
+
+/* Main container */
 .container {
-  text-align: center;
-  padding: 40px 20px;
-  position: relative;
-  z-index: 2;
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding-top: 5vh;
 }
 
+/* Title & Subtitle */
 h1 {
-  font-size: 2.5em;
-  margin-bottom: 0.2em;
-  color: #f8f8ff;
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
 }
 
 .subtitle {
-  font-size: 1.2em;
-  color: #ccc;
-  margin-top: 0;
-  margin-bottom: 1em;
+    font-size: 1.5rem;
+    color: #ccc;
+    margin-top: 0;
 }
 
 .description {
-  font-size: 1em;
-  color: #aaa;
-  margin-bottom: 2em;
+    margin: 1rem auto 2rem;
+    font-size: 1.2rem;
+    max-width: 600px;
+    color: #aaa;
 }
 
-.orb-container {
-  margin-top: 2em;
-}
-
-.orb {
-  width: 150px;
-  height: 150px;
-  margin: 0 auto;
-  border-radius: 50%;
-  background: radial-gradient(circle, #a78bfa 20%, #6b21a8 100%);
-  box-shadow: 0 0 40px #a78bfa;
-  transition: all 0.3s ease;
-}
-
-.orb.thinking {
-  box-shadow: 0 0 60px #38bdf8;
-  background: radial-gradient(circle, #60a5fa 10%, #2563eb 90%);
-}
-
-.orb.speaking {
-  box-shadow: 0 0 60px #facc15;
-  background: radial-gradient(circle, #fde047 20%, #f59e0b 90%);
-}
-
-.subtitle-line {
-  font-size: 1.1em;
-  margin-top: 1em;
-  color: #e0e0e0;
-}
-
+/* Buttons */
 .buttons {
-  margin-top: 1.5em;
+    margin-bottom: 2rem;
 }
 
 button {
-  background: #6b21a8;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 12px 20px;
-  margin: 0 10px;
-  font-size: 1em;
-  cursor: pointer;
-  transition: background 0.3s ease;
+    font-size: 1rem;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 0 10px;
+    transition: background-color 0.3s ease;
 }
 
-button:hover {
-  background: #7c3aed;
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
-button.stop {
-  background: #991b1b;
+#start-btn {
+    background-color: #6c5ce7;
+    color: white;
 }
 
-button.stop:hover {
-  background: #dc2626;
+#stop-btn {
+    background-color: #d63031;
+    color: white;
 }
 
-/* 🌌 Starfield Background */
-body::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 0;
-  background: transparent;
-  background-image: radial-gradient(white 1px, transparent 1px);
-  background-size: 3px 3px;
-  animation: twinkle 4s infinite linear;
-  opacity: 0.05;
+/* Orb container */
+.orb-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 3rem;
 }
 
-@keyframes twinkle {
-  0% { background-position: 0 0; }
-  100% { background-position: 100px 100px; }
+/* Glowing Orb */
+.orb {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: radial-gradient(circle at center, #a29bfe 0%, #6c5ce7 70%);
+    box-shadow: 0 0 25px #6c5ce7, 0 0 50px #a29bfe;
+    transition: all 0.4s ease;
+    animation: pulse 3s infinite;
+}
+
+.orb.thinking {
+    box-shadow: 0 0 35px #00cec9, 0 0 60px #00cec9;
+    background: radial-gradient(circle at center, #81ecec 0%, #00cec9 70%);
+}
+
+.orb.speaking {
+    box-shadow: 0 0 35px #fd79a8, 0 0 60px #fd79a8;
+    background: radial-gradient(circle at center, #fab1a0 0%, #fd79a8 70%);
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+}
+
+/* Response subtitle */
+.subtitle-line {
+    margin-top: 1rem;
+    font-size: 1.2rem;
+    color: #ffffff;
+}
+
+/* Audio element (hidden) */
+#audio {
+    display: none;
 }
