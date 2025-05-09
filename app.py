@@ -1,19 +1,18 @@
 import os
-from flask import Flask, render_template, request, jsonify
-from elevenlabs.client import ElevenLabs
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from openai import OpenAI
+from elevenlabs.client import ElevenLabs
+from elevenlabs import save
 from dotenv import load_dotenv
-import base64
 
 load_dotenv()
 
 app = Flask(__name__)
-
-# Initialize ElevenLabs
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 el_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 
-# Initialize OpenAI
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")
+AUDIO_PATH = "static/lumina_response.mp3"
 
 @app.route("/")
 def index():
@@ -22,32 +21,44 @@ def index():
 @app.route("/process-audio", methods=["POST"])
 def process_audio():
     try:
-        user_input = request.json["text"]
-        print(f"User said: {user_input}")
+        data = request.get_json()
+        transcript = data.get("transcript", "")
 
-        # Step 1: Get OpenAI response
-        completion = openai_client.chat.completions.create(
+        if not transcript:
+            return jsonify({"error": "No input"}), 400
+
+        # GPT reply
+        chat = openai_client.chat.completions.create(
             model="gpt-4",
-            messages=[{"role": "user", "content": user_input}]
+            messages=[
+                {"role": "system", "content": "You are Lumina, a divine assistant with cosmic clarity."},
+                {"role": "user", "content": transcript}
+            ]
         )
-        response_text = completion.choices[0].message.content.strip()
-        print(f"Lumina response: {response_text}")
+        response_text = chat.choices[0].message.content.strip()
 
-        # Step 2: Generate voice from ElevenLabs
+        # Generate voice from ElevenLabs
         audio = el_client.generate(
             text=response_text,
-            voice=os.getenv("ELEVENLABS_VOICE_ID"),
+            voice=VOICE_ID,
             model="eleven_multilingual_v2"
         )
 
-        # Step 3: Encode voice audio for web return
-        audio_base64 = base64.b64encode(audio).decode("utf-8")
+        save(audio, AUDIO_PATH)
 
-        return jsonify({"response": response_text, "audio": audio_base64})
+        return jsonify({
+            "response": response_text,
+            "audio_url": f"/{AUDIO_PATH}",
+            "subtitle": response_text  # optional
+        })
 
     except Exception as e:
-        print("Voice generation error:", e)
-        return jsonify({"error": "Voice generation failed."}), 500
+        print("❌ Error in /process-audio:", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route("/static/<path:path>")
+def serve_static(path):
+    return send_from_directory("static", path)
 
 if __name__ == "__main__":
     app.run(debug=True)
